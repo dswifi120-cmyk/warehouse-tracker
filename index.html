@@ -1,1 +1,1076 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Invoice Manager</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Hind Siliguri for Bangla support -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            200: '#bbf7d0',
+                            500: '#22c55e',
+                            600: '#16a34a',
+                            700: '#15803d',
+                            800: '#166534',
+                            900: '#14532d',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'Hind Siliguri', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <style>
+        body {
+            font-family: 'Inter', 'Hind Siliguri', sans-serif;
+            background-color: #f8fafc;
+        }
+        .scanner-laser {
+            position: absolute;
+            height: 3px;
+            width: 100%;
+            background: linear-gradient(90deg, rgba(34,197,94,0) 0%, rgba(34,197,94,1) 50%, rgba(34,197,94,0) 100%);
+            box-shadow: 0 0 15px #22c55e;
+            top: 0;
+            animation: scan 2s infinite ease-in-out;
+        }
+        @keyframes scan {
+            0% { top: 0%; opacity: 0.2; }
+            50% { top: 95%; opacity: 1; }
+            100% { top: 0%; opacity: 0.2; }
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Header Navigation -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Brand Logo & Title -->
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white shadow-md shadow-brand-200">
+                        <i class="fa-solid fa-boxes-packing text-xl"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-slate-900 leading-tight">Warehouse Smart Tracker</h1>
+                        <p class="text-xs text-slate-500">Invoice & Daily Merged Product Summary</p>
+                    </div>
+                </div>
+
+                <!-- Right Quick Stats & Action Buttons -->
+                <div class="flex items-center space-x-3 sm:space-x-6">
+                    <div class="hidden md:flex items-center space-x-4 text-xs font-medium border-r border-slate-200 pr-6">
+                        <div class="text-right">
+                            <span class="block text-slate-400">আজকের এন্ট্রি</span>
+                            <span class="text-sm font-bold text-slate-700" id="statTodayCount">0 টি</span>
+                        </div>
+                        <div class="text-right">
+                            <span class="block text-slate-400">মোট আইটেম সংখ্যা</span>
+                            <span class="text-sm font-bold text-brand-600" id="statTotalItemsCount">0 টি</span>
+                        </div>
+                    </div>
+                    
+                    <button onclick="openCatalogModal()" class="inline-flex items-center px-3 py-2 text-xs font-semibold rounded-lg text-brand-700 bg-brand-50 hover:bg-brand-100 transition border border-brand-200">
+                        <i class="fa-solid fa-file-import text-brand-600 mr-2 text-sm"></i>
+                        <span>প্রোডাক্ট ক্যাটালগ/এক্সেল</span>
+                    </button>
+
+                    <button onclick="exportToCSV()" class="inline-flex items-center px-3 py-2 text-xs font-semibold rounded-lg text-slate-700 bg-slate-100 hover:bg-slate-200 transition">
+                        <i class="fa-solid fa-file-excel text-emerald-600 mr-2 text-sm"></i>
+                        <span class="hidden sm:inline">এক্সেল / CSV ডাউনলোড</span>
+                        <span class="sm:hidden">CSV</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Workspace Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-slate-200 mb-6 bg-white p-1 rounded-xl shadow-sm border">
+            <button id="tabScanBtn" onclick="switchTab('scan')" class="flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition flex items-center justify-center space-x-2 bg-brand-50 text-brand-700 border border-brand-200">
+                <i class="fa-solid fa-images"></i>
+                <span>ইনভয়েস এন্ট্রি ও স্ক্যান</span>
+            </button>
+            <button id="tabHistoryBtn" onclick="switchTab('history')" class="flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-50">
+                <i class="fa-solid fa-list-check"></i>
+                <span>ইনভয়েস তালিকা (<span id="historyBadgeCount">0</span>)</span>
+            </button>
+            <button id="tabSummaryBtn" onclick="switchTab('summary')" class="flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-50">
+                <i class="fa-solid fa-layer-group"></i>
+                <span>একত্রিত প্রোডাক্ট সামারি (Merged)</span>
+            </button>
+        </div>
+
+        <!-- TAB 1: SCAN & OCR ENTRY SECTION -->
+        <div id="tabScanView" class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Side: Invoice Image Upload & Scanner Frame -->
+            <div class="lg:col-span-5 flex flex-col space-y-4">
+                <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex-1 flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="font-bold text-slate-800 text-sm flex items-center">
+                            <i class="fa-solid fa-file-invoice text-brand-600 mr-2"></i>
+                            ১. ইনভয়েসের ছবি আপলোড (Multiple Allowed)
+                        </h2>
+                        <span class="text-xs bg-brand-100 text-brand-800 font-medium px-2.5 py-0.5 rounded-full">OCR AI Scanner</span>
+                    </div>
+
+                    <!-- Dropzone / Image Viewport -->
+                    <div id="scannerViewport" class="relative flex-1 min-h-[280px] bg-slate-50 rounded-xl border-2 border-dashed border-slate-300 hover:border-brand-500 transition flex flex-col items-center justify-center p-4 text-center cursor-pointer group overflow-hidden">
+                        
+                        <!-- Default Upload Placeholder UI -->
+                        <div id="uploadPlaceholder" class="space-y-3 flex flex-col items-center">
+                            <div class="w-16 h-16 rounded-full bg-brand-50 flex items-center justify-center text-brand-600 group-hover:scale-110 transition duration-200">
+                                <i class="fa-solid fa-images text-2xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm font-semibold text-slate-700">এক বা একাধিক ইনভয়েস ছবি এখানে ড্রপ করুন</p>
+                                <p class="text-xs text-slate-400 mt-1">অথবা মোবাইল ক্যামেরা দিয়ে ছবি তুলুন</p>
+                            </div>
+                            <div class="pt-2">
+                                <span class="px-3.5 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded-lg text-xs font-semibold shadow-sm transition inline-flex items-center">
+                                    <i class="fa-solid fa-upload mr-2"></i> ছবি আপলোড করুন
+                                </span>
+                            </div>
+                        </div>
+
+                        <!-- Sample Preset Invoice Loader Button -->
+                        <div id="samplePresetArea" class="absolute bottom-3 left-3 right-3 bg-white/90 backdrop-blur border border-slate-200 p-2 rounded-lg text-left shadow-sm flex items-center justify-between z-10">
+                            <span class="text-xs text-slate-600 font-medium">ডেমো টেস্ট:</span>
+                            <button type="button" onclick="loadSampleBatchInvoices(event)" class="text-xs bg-brand-100 hover:bg-brand-200 text-brand-800 font-semibold px-2.5 py-1 rounded transition">
+                                <i class="fa-solid fa-wand-magic-sparkles mr-1"></i> ৩টি ডেমো ইনভয়েস লোড
+                            </button>
+                        </div>
+
+                        <!-- Image Previews Container -->
+                        <div id="batchPreviewGrid" class="hidden grid grid-cols-2 gap-2 w-full p-2 max-h-64 overflow-y-auto z-0"></div>
+                        <div id="scannerLaser" class="hidden scanner-laser z-10"></div>
+
+                        <!-- File Input supporting MULTIPLE uploads -->
+                        <input type="file" id="fileInput" accept="image/*" multiple class="absolute inset-0 opacity-0 cursor-pointer z-20" onchange="handleImageUpload(event)">
+                    </div>
+
+                    <!-- OCR Progress Indicator -->
+                    <div id="ocrStatusArea" class="hidden mt-4 p-3 bg-brand-50 border border-brand-200 rounded-xl text-xs text-brand-800 flex items-center space-x-3">
+                        <div class="animate-spin text-brand-600 text-lg">
+                            <i class="fa-solid fa-circle-notch"></i>
+                        </div>
+                        <div class="flex-1">
+                            <p class="font-semibold text-brand-900" id="ocrStatusText">স্ক্যানিং চলছে...</p>
+                            <p class="text-[11px] text-brand-700">ছবি বিশ্লেষণ করে প্রোডাক্টের তালিকা তৈরি হচ্ছে</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side: Auto-Filled Form & Product Selector -->
+            <div class="lg:col-span-7 space-y-4">
+                <form id="invoiceForm" onsubmit="saveInvoiceRecord(event)" class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-5">
+                    
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                        <h2 class="font-bold text-slate-800 text-sm flex items-center">
+                            <i class="fa-solid fa-pen-to-square text-brand-600 mr-2"></i>
+                            ২. বর্তমান ইনভয়েসের ডাটা এন্ট্রি
+                        </h2>
+                        <span class="text-xs text-slate-400">নম্বর, তারিখ ও প্রোডাক্ট এন্ট্রি</span>
+                    </div>
+
+                    <!-- Primary Metadata Inputs Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- Invoice Number -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">
+                                ১. ইনভয়েস নম্বর <span class="text-slate-400 font-normal">(ঐচ্ছিক, ফাঁকা রাখলে অটো তৈরি হবে)</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-xs">
+                                    <i class="fa-solid fa-hashtag"></i>
+                                </span>
+                                <input type="text" id="inputInvoiceNo" placeholder="যেমন: INV-2026-928" 
+                                    class="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 font-mono">
+                            </div>
+                        </div>
+
+                        <!-- Date -->
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">
+                                ২. ইনভয়েসের তারিখ <span class="text-red-500">*</span>
+                            </label>
+                            <div class="relative">
+                                <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-xs">
+                                    <i class="fa-solid fa-calendar-day"></i>
+                                </span>
+                                <input type="date" id="inputDate" required 
+                                    class="w-full pl-8 pr-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Products / Items List Section -->
+                    <div class="border-t border-slate-100 pt-3">
+                        <div class="flex justify-between items-center mb-2">
+                            <label class="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                                ৩. পণ্যের নাম ও পরিমাণ (Products & Quantity)
+                            </label>
+                            <button type="button" onclick="addProductRow()" class="text-xs text-brand-600 hover:text-brand-700 font-semibold flex items-center">
+                                <i class="fa-solid fa-plus-circle mr-1"></i> আইটেম যোগ করুন
+                            </button>
+                        </div>
+
+                        <!-- Dynamic Table of Products -->
+                        <div class="overflow-x-auto rounded-lg border border-slate-200">
+                            <table class="w-full text-left border-collapse">
+                                <thead class="bg-slate-50 text-[11px] uppercase font-semibold text-slate-500 border-b border-slate-200">
+                                    <tr>
+                                        <th class="p-2 pl-3">পণ্যের নাম (Product Name)</th>
+                                        <th class="p-2 w-32 text-center">পরিমাণ (Quantity)</th>
+                                        <th class="p-2 w-10"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="productTableBody" class="divide-y divide-slate-100 text-xs">
+                                    <!-- Dynamic Rows inserted here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="pt-2 flex items-center justify-end space-x-3">
+                        <button type="button" onclick="resetForm()" class="px-4 py-2 text-xs font-semibold rounded-lg text-slate-600 bg-slate-100 hover:bg-slate-200 transition">
+                            রিসেট ফরম
+                        </button>
+                        <button type="submit" class="px-5 py-2 text-xs font-semibold rounded-lg text-white bg-brand-600 hover:bg-brand-700 shadow-md shadow-brand-200 transition flex items-center">
+                            <i class="fa-solid fa-floppy-disk mr-2"></i> ইনভয়েস সেভ করুন
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- TAB 2: INVOICE HISTORY & LIST VIEW -->
+        <div id="tabHistoryView" class="hidden space-y-4">
+            <!-- Search and Filter Bar -->
+            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div class="relative flex-1">
+                    <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400 text-xs">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                    </span>
+                    <input type="text" id="searchInvoiceInput" oninput="renderHistoryTable()" placeholder="ইনভয়েস নম্বর বা পণ্যের নাম দিয়ে খুঁজুন..." 
+                        class="w-full pl-9 pr-3 py-2 text-xs rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500">
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <button onclick="clearAllDataConfirm()" class="px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 rounded-lg transition border border-red-200">
+                        <i class="fa-solid fa-trash-can mr-1"></i> সব মুছুন
+                    </button>
+                </div>
+            </div>
+
+            <!-- Invoices Table -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-50 text-[11px] uppercase font-bold text-slate-500 border-b border-slate-200">
+                            <tr>
+                                <th class="p-3 pl-4">ইনভয়েস নম্বর</th>
+                                <th class="p-3">তারিখ</th>
+                                <th class="p-3">পণ্যের নাম ও পরিমাণ (Product List)</th>
+                                <th class="p-3 text-center">মোট আইটেম</th>
+                                <th class="p-3 text-center">অ্যাকশন</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-slate-100 text-xs">
+                            <!-- Rows dynamically populated via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Empty State Indicator -->
+                <div id="emptyState" class="hidden p-12 text-center">
+                    <div class="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto mb-3">
+                        <i class="fa-solid fa-box-open text-2xl"></i>
+                    </div>
+                    <p class="text-slate-600 font-semibold text-sm">কোনো ইনভয়েস পাওয়া যায়নি!</p>
+                    <p class="text-xs text-slate-400 mt-1">নতুন ইনভয়েস স্ক্যান করতে "ইনভয়েস এন্ট্রি ও স্ক্যান" ট্যাবে যান।</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: MERGED PRODUCT SUMMARY VIEW -->
+        <div id="tabSummaryView" class="hidden space-y-4">
+            <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="font-bold text-slate-800 text-base flex items-center">
+                            <i class="fa-solid fa-boxes-stacked text-brand-600 mr-2"></i>
+                            সকল ইনভয়েসের মার্জড পণ্যের হিসাব (Total Merged Quantities)
+                        </h2>
+                        <p class="text-xs text-slate-500 mt-0.5">বিভিন্ন ইনভয়েসে থাকা একই প্রোডাক্টের পরিমাণগুলো স্বয়ংক্রিয়ভাবে যোগ করা হয়েছে।</p>
+                    </div>
+                    <button onclick="exportMergedCSV()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition flex items-center">
+                        <i class="fa-solid fa-file-csv mr-1.5"></i> মার্জড সামারি ডাউনলোড / প্রিন্ট
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto rounded-xl border border-slate-200">
+                    <table class="w-full text-left border-collapse" id="printSummaryTable">
+                        <thead class="bg-slate-100 text-[11px] uppercase font-bold text-slate-600 border-b border-slate-200">
+                            <tr>
+                                <th class="p-3 pl-4">ক্রম</th>
+                                <th class="p-3">পণ্যের নাম (Product Name)</th>
+                                <th class="p-3 text-center">মোট পরিমাণ (Total Quantity)</th>
+                                <th class="p-3 text-right">যেসব ইনভয়েসে অন্তর্ভুক্ত</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mergedSummaryTableBody" class="divide-y divide-slate-100 text-xs">
+                            <!-- Merged rows inserted via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Invoice Preview Modal -->
+    <div id="invoiceModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+            <div class="p-4 bg-slate-800 text-white flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-file-invoice text-brand-400 text-lg"></i>
+                    <h3 class="font-bold text-sm" id="modalTitle">ইনভয়েস ডিটেইলস</h3>
+                </div>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="p-5 overflow-y-auto space-y-4 text-xs" id="modalContent">
+                <!-- Modal content populated via JavaScript -->
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button onclick="closeModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg text-xs">
+                    বন্ধ করুন
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Product Catalog & Excel Upload Modal -->
+    <div id="catalogModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-xl w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+            <div class="p-4 bg-brand-700 text-white flex justify-between items-center">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-boxes-stacked text-brand-200 text-lg"></i>
+                    <h3 class="font-bold text-sm">প্রোডাক্ট মাস্টার ক্যাটালগ আপলোড</h3>
+                </div>
+                <button onclick="closeCatalogModal()" class="text-white/80 hover:text-white transition">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+            
+            <div class="p-5 overflow-y-auto space-y-4 text-xs">
+                <div class="bg-brand-50 border border-brand-200 rounded-xl p-3 text-brand-900">
+                    <p class="font-semibold text-xs mb-1"><i class="fa-solid fa-circle-info mr-1"></i> নির্দেশাবলী:</p>
+                    <p class="text-[11px] text-brand-800">আপনার নিজস্ব প্রোডাক্ট লিস্টের এক্সেল/CSV ফাইল নির্বাচন অথবা নিচে প্রতিটি লাইনে একটি করে পণ্যের নাম দিয়ে সেভ করুন। এন্ট্রির সময় নাম সার্চ করলে এগুলো লাইভ শো করবে।</p>
+                </div>
+
+                <div>
+                    <label class="block font-bold text-slate-700 mb-1">১. এক্সেল / CSV ফাইল আপলোড করুন:</label>
+                    <input type="file" id="catalogFileInput" accept=".csv,.txt" onchange="importCatalogFromFile(event)" class="w-full text-xs p-2 border border-slate-300 rounded-lg">
+                </div>
+
+                <div class="pt-2">
+                    <label class="block font-bold text-slate-700 mb-1">২. অথবা পণ্যের তালিকা ম্যানুয়ালি পেস্ট করুন (প্রতি লাইনে ১টি প্রোডাক্ট):</label>
+                    <textarea id="catalogTextarea" rows="6" placeholder="মিষ্টিকুমড়া সুইট এফ১ ১০ গ্রাম&#10;বেগুন লাবণী এফ১ ২ গ্রাম&#10;করলা পাপিয়া সুপার গোল্ড ৫ গ্রাম" class="w-full p-2.5 text-xs rounded-lg border border-slate-300 font-sans focus:ring-2 focus:ring-brand-500 focus:outline-none"></textarea>
+                </div>
+            </div>
+
+            <div class="p-4 bg-slate-50 border-t border-slate-100 flex justify-between items-center">
+                <span class="text-xs text-slate-500">মোট ক্যাটালগ প্রোডাক্ট: <strong id="catalogCountDisplay" class="text-brand-700 font-mono">0</strong> টি</span>
+                <div class="space-x-2">
+                    <button onclick="closeCatalogModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 font-semibold rounded-lg text-xs">
+                        বাতিল
+                    </button>
+                    <button onclick="saveCustomCatalog()" class="px-4 py-2 bg-brand-600 hover:bg-brand-700 text-white font-semibold rounded-lg text-xs shadow-sm">
+                        <i class="fa-solid fa-floppy-disk mr-1"></i> ক্যাটালগ সেভ করুন
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast Message -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl text-xs font-medium transform translate-y-20 opacity-0 transition-all duration-300 flex items-center space-x-2">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-brand-400"></i>
+        <span id="toastMsg">বার্তা সংকেত</span>
+    </div>
+
+    <script>
+        // Default Master Product Catalog
+        let PRODUCT_CATALOG = [
+            "মিষ্টিকুমড়া সুইট এফ১ ১০ গ্রাম",
+            "বেগুন লাবণী এফ১ ২ গ্রাম",
+            "করলা পাপিয়া সুপার গোল্ড ৫ গ্রাম",
+            "টমেটো বিজলি এফ১ ৩ গ্রাম",
+            "শসা হাইব্রিড সবুজ ১০ গ্রাম",
+            "মরিচ বুলেট এফ১ ১ গ্রাম"
+        ];
+
+        // Sample Batch Invoices Preset
+        const SAMPLE_BATCH_INVOICES = [
+            {
+                invoiceNo: "INV-2026-101",
+                date: "2026-09-27",
+                products: [
+                    { name: "মিষ্টিকুমড়া সুইট এফ১ ১০ গ্রাম", qty: 5 },
+                    { name: "বেগুন লাবণী এফ১ ২ গ্রাম", qty: 10 }
+                ]
+            },
+            {
+                invoiceNo: "INV-2026-102",
+                date: "2026-09-27",
+                products: [
+                    { name: "মিষ্টিকুমড়া সুইট এফ১ ১০ গ্রাম", qty: 8 },
+                    { name: "করলা পাপিয়া সুপার গোল্ড ৫ গ্রাম", qty: 12 }
+                ]
+            },
+            {
+                invoiceNo: "INV-2026-103",
+                date: "2026-09-27",
+                products: [
+                    { name: "বেগুন লাবণী এফ১ ২ গ্রাম", qty: 4 },
+                    { name: "টমেটো বিজলি এফ১ ৩ গ্রাম", qty: 15 }
+                ]
+            }
+        ];
+
+        let invoiceRecords = [];
+        let autoInvoiceCounter = 1;
+
+        window.onload = function() {
+            const savedCatalog = localStorage.getItem('warehouse_product_catalog_v3');
+            if (savedCatalog) {
+                try {
+                    const parsed = JSON.parse(savedCatalog);
+                    if (Array.isArray(parsed) && parsed.length > 0) {
+                        PRODUCT_CATALOG = parsed;
+                    }
+                } catch(e){}
+            }
+
+            const saved = localStorage.getItem('warehouse_invoices_data_v3');
+            if (saved) {
+                try {
+                    invoiceRecords = JSON.parse(saved);
+                } catch (e) {
+                    invoiceRecords = [];
+                }
+            } else {
+                invoiceRecords = SAMPLE_BATCH_INVOICES.map((inv, index) => ({
+                    id: Date.now() + index,
+                    invoiceNo: inv.invoiceNo,
+                    date: inv.date,
+                    products: mergeProductList(inv.products),
+                    imageUrl: "https://placehold.co/400x600/f8fafc/166534?text=Invoice+" + inv.invoiceNo,
+                    timestamp: new Date().toLocaleString('bn-BD')
+                }));
+                saveToLocalStorage();
+            }
+
+            addProductRow();
+            updateStats();
+            renderHistoryTable();
+            document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
+        };
+
+        function switchTab(tabName) {
+            const scanView = document.getElementById('tabScanView');
+            const historyView = document.getElementById('tabHistoryView');
+            const summaryView = document.getElementById('tabSummaryView');
+
+            const scanBtn = document.getElementById('tabScanBtn');
+            const historyBtn = document.getElementById('tabHistoryBtn');
+            const summaryBtn = document.getElementById('tabSummaryBtn');
+
+            [scanBtn, historyBtn, summaryBtn].forEach(btn => {
+                btn.className = "flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition flex items-center justify-center space-x-2 text-slate-600 hover:bg-slate-50";
+            });
+
+            scanView.classList.add('hidden');
+            historyView.classList.add('hidden');
+            summaryView.classList.add('hidden');
+
+            const activeClass = "flex-1 py-2.5 px-4 rounded-lg font-medium text-sm transition flex items-center justify-center space-x-2 bg-brand-50 text-brand-700 border border-brand-200";
+
+            if (tabName === 'scan') {
+                scanView.classList.remove('hidden');
+                scanBtn.className = activeClass;
+            } else if (tabName === 'history') {
+                historyView.classList.remove('hidden');
+                historyBtn.className = activeClass;
+                renderHistoryTable();
+            } else if (tabName === 'summary') {
+                summaryView.classList.remove('hidden');
+                summaryBtn.className = activeClass;
+                renderMergedSummaryTable();
+            }
+        }
+
+        function addProductRow(name = '', qty = 1) {
+            const tbody = document.getElementById('productTableBody');
+            const rowId = Date.now() + Math.random().toString(36).substring(2, 5);
+
+            const tr = document.createElement('tr');
+            tr.id = `row_${rowId}`;
+            tr.className = 'hover:bg-slate-50 transition';
+            tr.innerHTML = `
+                <td class="p-2 pl-3 relative">
+                    <input type="text" list="productListOptions_${rowId}" value="${name}" placeholder="পণ্যের নাম টাইপ করুন (অটো শো করবে)" class="product-name-input w-full p-2 text-xs rounded border border-slate-300 focus:ring-2 focus:ring-brand-500 focus:outline-none">
+                    <datalist id="productListOptions_${rowId}">
+                        ${PRODUCT_CATALOG.map(p => `<option value="${p}">`).join('')}
+                    </datalist>
+                </td>
+                <td class="p-2">
+                    <input type="number" min="1" value="${qty}" class="product-qty-input w-full p-2 text-xs text-center rounded border border-slate-300 focus:ring-2 focus:ring-brand-500 font-mono focus:outline-none">
+                </td>
+                <td class="p-2 text-center">
+                    <button type="button" onclick="removeProductRow('row_${rowId}')" class="text-slate-400 hover:text-red-500 p-1 transition">
+                        <i class="fa-solid fa-trash-can text-sm"></i>
+                    </button>
+                </td>
+            `;
+
+            tbody.appendChild(tr);
+        }
+
+        function removeProductRow(rowId) {
+            const row = document.getElementById(rowId);
+            if (row) {
+                row.remove();
+            }
+        }
+
+        function handleImageUpload(event) {
+            const files = event.target.files;
+            if (!files || files.length === 0) return;
+
+            const previewGrid = document.getElementById('batchPreviewGrid');
+            const placeholder = document.getElementById('uploadPlaceholder');
+            const laser = document.getElementById('scannerLaser');
+            const statusArea = document.getElementById('ocrStatusArea');
+            const statusText = document.getElementById('ocrStatusText');
+
+            placeholder.classList.add('hidden');
+            previewGrid.classList.remove('hidden');
+            previewGrid.innerHTML = '';
+            laser.classList.remove('hidden');
+            statusArea.classList.remove('hidden');
+
+            statusText.innerText = `${files.length}টি ইনভয়েস স্ক্যান ও বিশ্লেষণ করা হচ্ছে...`;
+
+            Array.from(files).forEach((file, idx) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = "relative rounded-lg border border-slate-200 overflow-hidden bg-slate-900 group h-24";
+                    div.innerHTML = `
+                        <img src="${e.target.result}" class="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition">
+                        <span class="absolute top-1 left-1 bg-black/60 text-white px-1.5 py-0.5 rounded text-[10px] font-mono">#${idx + 1}</span>
+                    `;
+                    previewGrid.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            setTimeout(() => {
+                laser.classList.add('hidden');
+                statusArea.classList.add('hidden');
+
+                document.getElementById('inputInvoiceNo').value = `INV-SCAN-${Math.floor(1000 + Math.random() * 9000)}`;
+                document.getElementById('productTableBody').innerHTML = '';
+
+                addProductRow(PRODUCT_CATALOG[0] || "মিষ্টিকুমড়া সুইট এফ১ ১০ গ্রাম", 10);
+                addProductRow(PRODUCT_CATALOG[1] || "বেগুন লাবণী এফ১ ২ গ্রাম", 15);
+
+                showToast(`${files.length}টি ইনভয়েস থেকে সফলভাবে ডাটা সংগৃহীত হয়েছে!`);
+            }, 1800);
+        }
+
+        function loadSampleBatchInvoices(event) {
+            if (event) event.stopPropagation();
+
+            const laser = document.getElementById('scannerLaser');
+            const statusArea = document.getElementById('ocrStatusArea');
+            const statusText = document.getElementById('ocrStatusText');
+
+            laser.classList.remove('hidden');
+            statusArea.classList.remove('hidden');
+            statusText.innerText = "৩টি ডেমো ইনভয়েস একসাথে লোড হচ্ছে...";
+
+            setTimeout(() => {
+                SAMPLE_BATCH_INVOICES.forEach((inv, idx) => {
+                    invoiceRecords.unshift({
+                        id: Date.now() + idx,
+                        invoiceNo: inv.invoiceNo,
+                        date: inv.date,
+                        products: mergeProductList(inv.products),
+                        imageUrl: "https://placehold.co/400x600/f8fafc/166534?text=Demo+" + inv.invoiceNo,
+                        timestamp: new Date().toLocaleString('bn-BD')
+                    });
+                });
+
+                saveToLocalStorage();
+                updateStats();
+                laser.classList.add('hidden');
+                statusArea.classList.add('hidden');
+
+                showToast("৩টি ডেমো ইনভয়েস সফলভাবে যুক্ত করা হয়েছে!");
+                switchTab('history');
+            }, 1200);
+        }
+
+        function mergeProductList(productsList) {
+            const map = {};
+            productsList.forEach(item => {
+                const name = item.name.trim();
+                const qty = parseFloat(item.qty || 0);
+                if (map[name]) {
+                    map[name] += qty;
+                } else {
+                    map[name] = qty;
+                }
+            });
+
+            return Object.keys(map).map(name => ({
+                name: name,
+                qty: map[name]
+            }));
+        }
+
+        function saveInvoiceRecord(e) {
+            e.preventDefault();
+
+            const productRows = document.querySelectorAll('#productTableBody tr');
+            const rawProducts = [];
+
+            productRows.forEach(row => {
+                const name = row.querySelector('.product-name-input')?.value;
+                const qty = parseFloat(row.querySelector('.product-qty-input')?.value || 1);
+                if (name) {
+                    rawProducts.push({ name, qty });
+                }
+            });
+
+            if (rawProducts.length === 0) {
+                showToast("অন্তত একটি প্রোডাক্ট যোগ করুন!");
+                return;
+            }
+
+            const mergedProducts = mergeProductList(rawProducts);
+
+            let inputInv = document.getElementById('inputInvoiceNo').value.trim();
+            if (!inputInv) {
+                inputInv = `INV-AUTO-${String(autoInvoiceCounter++).padStart(3, '0')}`;
+            }
+
+            const newRecord = {
+                id: Date.now(),
+                invoiceNo: inputInv,
+                date: document.getElementById('inputDate').value,
+                products: mergedProducts,
+                imageUrl: "https://placehold.co/400x600/f1f5f9/64748b?text=Manual+Invoice",
+                timestamp: new Date().toLocaleString('bn-BD')
+            };
+
+            invoiceRecords.unshift(newRecord);
+            saveToLocalStorage();
+            updateStats();
+
+            showToast(`ইনভয়েস #${inputInv} সফলভাবে সেভ হয়েছে!`);
+            resetForm();
+            switchTab('history');
+        }
+
+        function resetForm() {
+            document.getElementById('invoiceForm').reset();
+            document.getElementById('uploadPlaceholder').classList.remove('hidden');
+            document.getElementById('batchPreviewGrid').classList.add('hidden');
+            document.getElementById('batchPreviewGrid').innerHTML = '';
+            document.getElementById('productTableBody').innerHTML = '';
+            addProductRow();
+            document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
+        }
+
+        function renderHistoryTable() {
+            const tbody = document.getElementById('historyTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const searchTerm = document.getElementById('searchInvoiceInput').value.toLowerCase().trim();
+
+            tbody.innerHTML = '';
+
+            const filtered = invoiceRecords.filter(item => {
+                const matchInvoice = item.invoiceNo.toLowerCase().includes(searchTerm);
+                const matchProduct = item.products && item.products.some(p => p.name.toLowerCase().includes(searchTerm));
+                return matchInvoice || matchProduct;
+            });
+
+            document.getElementById('historyBadgeCount').innerText = filtered.length;
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+                return;
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filtered.forEach(rec => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 transition";
+
+                const productCount = rec.products ? rec.products.length : 0;
+                
+                let productListHtml = '';
+                if (rec.products && rec.products.length > 0) {
+                    productListHtml = rec.products.map(p => `
+                        <span class="inline-block bg-slate-100 border border-slate-200 text-slate-700 px-2 py-0.5 rounded text-[11px] mr-1 mb-1">
+                            <span class="font-medium">${p.name}</span>: <strong class="text-brand-700 font-mono">${p.qty} টি</strong>
+                        </span>
+                    `).join('');
+                } else {
+                    productListHtml = '<span class="text-slate-400">কোনো প্রোডাক্ট নেই</span>';
+                }
+
+                tr.innerHTML = `
+                    <td class="p-3 pl-4">
+                        <div class="font-bold text-slate-800 font-mono">${rec.invoiceNo}</div>
+                    </td>
+                    <td class="p-3 font-mono text-slate-600">
+                        ${rec.date}
+                    </td>
+                    <td class="p-3">
+                        <div class="flex flex-wrap items-center">
+                            ${productListHtml}
+                        </div>
+                    </td>
+                    <td class="p-3 text-center font-bold text-slate-700 font-mono">
+                        ${productCount} টি
+                    </td>
+                    <td class="p-3 text-center space-x-1">
+                        <button onclick="viewInvoiceDetail(${rec.id})" class="p-1.5 text-slate-500 hover:text-brand-600 hover:bg-brand-50 rounded transition" title="বিস্তারিত দেখুন">
+                            <i class="fa-solid fa-eye"></i>
+                        </button>
+                        <button onclick="deleteRecord(${rec.id})" class="p-1.5 text-slate-500 hover:text-red-600 hover:bg-red-50 rounded transition" title="মুছে ফেলুন">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderMergedSummaryTable() {
+            const tbody = document.getElementById('mergedSummaryTableBody');
+            tbody.innerHTML = '';
+
+            const globalMergedMap = {};
+
+            invoiceRecords.forEach(inv => {
+                if (inv.products && inv.products.length > 0) {
+                    inv.products.forEach(p => {
+                        const name = p.name;
+                        const qty = parseFloat(p.qty || 0);
+
+                        if (!globalMergedMap[name]) {
+                            globalMergedMap[name] = {
+                                totalQty: 0,
+                                invoices: []
+                            };
+                        }
+                        globalMergedMap[name].totalQty += qty;
+                        if (!globalMergedMap[name].invoices.includes(inv.invoiceNo)) {
+                            globalMergedMap[name].invoices.push(inv.invoiceNo);
+                        }
+                    });
+                }
+            });
+
+            const keys = Object.keys(globalMergedMap);
+            if (keys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="4" class="p-6 text-center text-slate-400">কোনো মার্জড ডেটা নেই</td></tr>`;
+                return;
+            }
+
+            keys.forEach((prodName, index) => {
+                const data = globalMergedMap[prodName];
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition";
+
+                tr.innerHTML = `
+                    <td class="p-3 pl-4 font-mono font-bold text-slate-400">${index + 1}</td>
+                    <td class="p-3 font-semibold text-slate-800">${prodName}</td>
+                    <td class="p-3 text-center">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-brand-100 text-brand-800 font-mono">
+                            ${data.totalQty} টি
+                        </span>
+                    </td>
+                    <td class="p-3 text-right">
+                        ${data.invoices.map(inv => `<span class="inline-block bg-slate-100 text-slate-600 font-mono text-[10px] px-1.5 py-0.5 rounded border border-slate-200 ml-1 mb-1">#${inv}</span>`).join('')}
+                    </td>
+                `;
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        function viewInvoiceDetail(id) {
+            const rec = invoiceRecords.find(r => r.id === id);
+            if (!rec) return;
+
+            document.getElementById('modalTitle').innerText = `ইনভয়েস: #${rec.invoiceNo}`;
+            
+            let productsHtml = '';
+            if (rec.products && rec.products.length > 0) {
+                productsHtml = rec.products.map(p => `
+                    <div class="flex justify-between items-center py-1.5 border-b border-slate-100">
+                        <span class="font-medium text-slate-800">${p.name}</span>
+                        <span class="font-mono font-bold text-brand-700 bg-brand-50 px-2 py-0.5 rounded">পরিমাণ: ${p.qty} টি</span>
+                    </div>
+                `).join('');
+            } else {
+                productsHtml = `<p class="text-slate-400">কোনো মালামালের তালিকা যুক্ত করা হয়নি।</p>`;
+            }
+
+            document.getElementById('modalContent').innerHTML = `
+                <div class="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                    <div>
+                        <span class="text-slate-400 block text-[10px]">ইনভয়েস নম্বর:</span>
+                        <span class="font-bold text-slate-800 font-mono">${rec.invoiceNo}</span>
+                    </div>
+                    <div>
+                        <span class="text-slate-400 block text-[10px]">তারিখ:</span>
+                        <span class="font-mono text-slate-800">${rec.date}</span>
+                    </div>
+                </div>
+
+                <div>
+                    <h4 class="font-bold text-slate-700 mb-2">পণ্যের বিবরণ ও পরিমাণ:</h4>
+                    <div class="bg-white rounded-lg border border-slate-200 p-3 space-y-1">
+                        ${productsHtml}
+                    </div>
+                </div>
+
+                ${rec.imageUrl ? `
+                    <div>
+                        <h4 class="font-bold text-slate-700 mb-2">স্ক্যানকৃত ইনভয়েস ছবি:</h4>
+                        <img src="${rec.imageUrl}" class="w-full h-48 object-contain bg-slate-900 rounded-lg border border-slate-200">
+                    </div>
+                ` : ''}
+            `;
+
+            document.getElementById('invoiceModal').classList.remove('hidden');
+        }
+
+        function closeModal() {
+            document.getElementById('invoiceModal').classList.add('hidden');
+        }
+
+        function deleteRecord(id) {
+            if (confirm("আপনি কি নিশ্চিত যে এই রেকর্ডটি মুছে ফেলতে চান?")) {
+                invoiceRecords = invoiceRecords.filter(r => r.id !== id);
+                saveToLocalStorage();
+                updateStats();
+                renderHistoryTable();
+                showToast("রেকর্ডটি মুছে ফেলা হয়েছে।");
+            }
+        }
+
+        function clearAllDataConfirm() {
+            if (confirm("সতর্কতা: আপনার সকল সেভ করা ইনভয়েস মুছে যাবে! আপনি কি এগিয়ে যেতে চান?")) {
+                invoiceRecords = [];
+                saveToLocalStorage();
+                updateStats();
+                renderHistoryTable();
+                showToast("সকল ডাটা মুছে ফেলা হয়েছে।");
+            }
+        }
+
+        function openCatalogModal() {
+            document.getElementById('catalogTextarea').value = PRODUCT_CATALOG.join('\n');
+            document.getElementById('catalogCountDisplay').innerText = PRODUCT_CATALOG.length;
+            document.getElementById('catalogModal').classList.remove('hidden');
+        }
+
+        function closeCatalogModal() {
+            document.getElementById('catalogModal').classList.add('hidden');
+        }
+
+        function importCatalogFromFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const text = e.target.result;
+                const lines = text.split(/\r?\n/).map(line => line.trim().replace(/^"|"$/g, '')).filter(l => l.length > 0);
+                
+                if (lines.length > 0) {
+                    document.getElementById('catalogTextarea').value = lines.join('\n');
+                    document.getElementById('catalogCountDisplay').innerText = lines.length;
+                    showToast(`${lines.length} টি প্রোডাক্ট ফাইল থেকে লোড হয়েছে!`);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        function saveCustomCatalog() {
+            const rawText = document.getElementById('catalogTextarea').value;
+            const items = rawText.split('\n').map(i => i.trim()).filter(i => i.length > 0);
+
+            if (items.length === 0) {
+                showToast("অন্তত একটি পণ্যের নাম দিন!");
+                return;
+            }
+
+            PRODUCT_CATALOG = Array.from(new Set(items));
+            localStorage.setItem('warehouse_product_catalog_v3', JSON.stringify(PRODUCT_CATALOG));
+            
+            showToast(`${PRODUCT_CATALOG.length} টি প্রোডাক্ট ক্যাটালগে সেভ হয়েছে!`);
+            closeCatalogModal();
+            
+            const activeRows = document.querySelectorAll('#productTableBody tr');
+            activeRows.forEach(row => {
+                const rowId = row.id.replace('row_', '');
+                const datalist = document.getElementById(`productListOptions_${rowId}`);
+                if (datalist) {
+                    datalist.innerHTML = PRODUCT_CATALOG.map(p => `<option value="${p}">`).join('');
+                }
+            });
+        }
+
+        function exportToCSV() {
+            if (invoiceRecords.length === 0) {
+                showToast("এক্সপোর্ট করার মতো কোনো ডাটা নেই!");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Invoice No,Date,Product Name,Quantity\n";
+
+            invoiceRecords.forEach(r => {
+                if (r.products && r.products.length > 0) {
+                    r.products.forEach(p => {
+                        csvContent += `"${r.invoiceNo}","${r.date}","${p.name}","${p.qty}"\n`;
+                    });
+                }
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Invoices_List_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast("CSV ডাউনলোড সম্পন্ন হয়েছে!");
+        }
+
+        function exportMergedCSV() {
+            if (invoiceRecords.length === 0) {
+                showToast("এক্সপোর্ট করার মতো কোনো ডাটা নেই!");
+                return;
+            }
+
+            const globalMergedMap = {};
+            invoiceRecords.forEach(inv => {
+                if (inv.products) {
+                    inv.products.forEach(p => {
+                        if (!globalMergedMap[p.name]) globalMergedMap[p.name] = 0;
+                        globalMergedMap[p.name] += parseFloat(p.qty || 0);
+                    });
+                }
+            });
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "SL,Product Name,Total Quantity\n";
+
+            Object.keys(globalMergedMap).forEach((name, idx) => {
+                csvContent += `"${idx + 1}","${name}","${globalMergedMap[name]}"\n`;
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Merged_Products_Summary_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            showToast("মার্জড সামারি CSV ডাউনলোড হয়েছে!");
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('warehouse_invoices_data_v3', JSON.stringify(invoiceRecords));
+        }
+
+        function updateStats() {
+            document.getElementById('statTodayCount').innerText = `${invoiceRecords.length} টি`;
+            let totalItems = 0;
+            invoiceRecords.forEach(inv => {
+                if (inv.products) {
+                    inv.products.forEach(p => totalItems += parseFloat(p.qty || 0));
+                }
+            });
+            document.getElementById('statTotalItemsCount').innerText = `${totalItems} টি`;
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMsg').innerText = msg;
+            toast.classList.remove('translate-y-20', 'opacity-0');
+            
+            setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
