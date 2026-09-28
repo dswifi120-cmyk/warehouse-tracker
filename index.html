@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Warehouse Invoice Manager - Inbound & Outbound App</title>
+    <title>Warehouse Invoice Manager - Multi-Device Live Sync</title>
     
     <!-- PWA Web App Capable Meta Tags -->
     <meta name="mobile-web-app-capable" content="yes">
@@ -19,7 +19,7 @@
     <!-- Google Fonts: Inter & Hind Siliguri -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
 
     <script>
         tailwind.config = {
@@ -30,6 +30,7 @@
                         darkbg: '#080c14',
                         cardbg: '#0f172a',
                         cardborder: '#1e293b',
+                        sheetbg: '#0b1329',
                         brand: {
                             50: '#ecfdf5',
                             100: '#d1fae5',
@@ -41,6 +42,7 @@
                     },
                     fontFamily: {
                         sans: ['Inter', 'Hind Siliguri', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
                     }
                 }
             }
@@ -71,10 +73,24 @@
             100% { top: 0%; opacity: 0.2; }
         }
 
+        /* Custom Spreadsheet Table Grid Styling */
+        .sheet-table th, .sheet-table td {
+            border: 1px solid #1e293b;
+        }
+        .sheet-table tr:nth-child(even) {
+            background-color: rgba(15, 23, 42, 0.6);
+        }
+        .sheet-table tr:nth-child(odd) {
+            background-color: rgba(11, 19, 41, 0.8);
+        }
+        .sheet-table tr:hover {
+            background-color: rgba(30, 41, 59, 0.9);
+        }
+
         /* Dark Custom Scrollbar */
         ::-webkit-scrollbar {
-            width: 5px;
-            height: 5px;
+            width: 6px;
+            height: 6px;
         }
         ::-webkit-scrollbar-track {
             background: #0f172a;
@@ -92,44 +108,82 @@
             backdrop-filter: blur(12px);
             -webkit-backdrop-filter: blur(12px);
         }
+
+        /* Print CSS Rules for clean paper printing */
+        @media print {
+            body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+            }
+            header, nav, button, .no-print, #ocrStatusArea, #samplePresetArea {
+                display: none !important;
+            }
+            main {
+                max-width: 100% !important;
+                padding: 0 !important;
+                margin: 0 !important;
+            }
+            .bg-cardbg, .bg-slate-950, .bg-slate-900, .bg-sheetbg {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                border-color: #cbd5e1 !important;
+            }
+            .text-white, .text-slate-100, .text-slate-200, .text-slate-300, .text-slate-400 {
+                color: #000000 !important;
+            }
+            .sheet-table th {
+                background-color: #f1f5f9 !important;
+                color: #000000 !important;
+                border: 1px solid #64748b !important;
+            }
+            .sheet-table td {
+                border: 1px solid #94a3b8 !important;
+                color: #000000 !important;
+            }
+            .print-show {
+                display: block !important;
+            }
+        }
     </style>
 </head>
 <body class="text-slate-100 antialiased min-h-screen flex flex-col pb-20 md:pb-6 selection:bg-brand-500 selection:text-white">
 
     <!-- Header Section -->
-    <header class="glass-header border-b border-slate-800 sticky top-0 z-30 shadow-lg">
+    <header class="glass-header border-b border-slate-800 sticky top-0 z-30 shadow-lg no-print">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between items-center h-16">
                 <!-- Brand Logo & App Title -->
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-brand-500/20">
-                        <i class="fa-solid fa-boxes-packing text-lg"></i>
+                        <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
                     </div>
                     <div>
                         <h1 class="text-base font-bold text-white leading-tight tracking-tight flex items-center">
                             Warehouse App
-                            <span class="ml-2 text-[10px] bg-brand-500/20 text-brand-400 border border-brand-500/30 px-1.5 py-0.5 rounded-full font-mono">PWA PRO</span>
+                            <span id="syncBadge" class="ml-2 text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono flex items-center">
+                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 animate-pulse"></span>
+                                লাইভ সিঙ্ক চালু
+                            </span>
                         </h1>
-                        <p class="text-[11px] text-slate-400">ইনবাউন্ড, আউটবাউন্ড ও স্টক ম্যানেজমেন্ট</p>
+                        <p class="text-[11px] text-slate-400">৩টি ফোনেই রিয়েল-টাইম ডাটা সিঙ্ক হচ্ছে</p>
                     </div>
                 </div>
 
-                <!-- Header Actions & PWA Install Button -->
+                <!-- Header Actions -->
                 <div class="flex items-center space-x-2 sm:space-x-3">
-                    <button id="pwaInstallBtn" onclick="installAppPrompt()" class="hidden inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-xl text-slate-950 bg-brand-400 hover:bg-brand-500 transition shadow-md shadow-brand-500/20">
-                        <i class="fa-solid fa-download mr-1.5"></i>
-                        <span>ইনস্টল অ্যাপ</span>
+                    <button onclick="window.print()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
+                        <i class="fa-solid fa-print text-brand-400 mr-1.5"></i>
+                        <span class="hidden sm:inline">প্রিন্ট / PDF</span>
                     </button>
 
                     <button onclick="openCatalogModal()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-xl text-brand-400 bg-brand-500/10 hover:bg-brand-500/20 transition border border-brand-500/30">
                         <i class="fa-solid fa-boxes-stacked mr-1.5"></i>
-                        <span class="hidden sm:inline">প্রোডাক্ট ক্যাটালগ</span>
-                        <span class="sm:hidden">ক্যাটালগ</span>
+                        <span class="hidden sm:inline">ক্যাটালগ</span>
                     </button>
 
                     <button onclick="exportToCSV()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-300 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
                         <i class="fa-solid fa-file-excel text-emerald-400 mr-1.5"></i>
-                        <span class="hidden sm:inline">CSV এক্সপোর্ট</span>
+                        <span class="hidden sm:inline">CSV</span>
                     </button>
                 </div>
             </div>
@@ -138,8 +192,17 @@
 
     <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 space-y-4">
         
+        <!-- Live Connection Notice Banner -->
+        <div id="liveSyncStatusBanner" class="bg-gradient-to-r from-brand-900/30 via-slate-900 to-slate-900 border border-brand-500/30 p-2.5 rounded-2xl flex items-center justify-between text-xs no-print shadow-sm">
+            <div class="flex items-center space-x-2">
+                <i class="fa-solid fa-users text-brand-400 text-sm ml-1"></i>
+                <span class="text-slate-300">সকল ৩টি ফোনেই লাইভ কানেক্টেড। এক ফোনে ডাটা এন্ট্রি দিলে সাথে সাথে অন্য ফোনে আপডেট হয়ে যাবে।</span>
+            </div>
+            <span class="text-[10px] text-brand-400 bg-brand-500/10 font-mono px-2 py-1 rounded-lg border border-brand-500/20 hidden sm:inline">Live Sync Ready</span>
+        </div>
+
         <!-- Quick Stats Dashboard -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 no-print">
             <div class="bg-cardbg border border-cardborder rounded-2xl p-3 flex items-center space-x-3 shadow-sm">
                 <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm">
                     <i class="fa-solid fa-arrow-down-left"></i>
@@ -182,23 +245,27 @@
         </div>
 
         <!-- Desktop Navigation Tabs -->
-        <div class="hidden md:flex border-b border-cardborder bg-cardbg p-1 rounded-2xl shadow-md">
+        <div class="hidden md:flex border-b border-cardborder bg-cardbg p-1 rounded-2xl shadow-md no-print">
             <button id="tabScanBtn" onclick="switchTab('scan')" class="flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 bg-brand-500/20 text-brand-400 border border-brand-500/40">
                 <i class="fa-solid fa-pen-to-square"></i>
                 <span>ইনভয়েস এন্ট্রি ও স্ক্যান</span>
             </button>
+            <button id="tabSheetsBtn" onclick="switchTab('sheets')" class="flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-800/50">
+                <i class="fa-solid fa-table-cells text-emerald-400"></i>
+                <span>শিট ভিউ (Sheets View)</span>
+            </button>
             <button id="tabHistoryBtn" onclick="switchTab('history')" class="flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-800/50">
                 <i class="fa-solid fa-list-check"></i>
-                <span>ইনভয়েস রেকর্ড তালিকা (<span id="historyBadgeCount">0</span>)</span>
+                <span>ইনভয়েস তালিকা (<span id="historyBadgeCount">0</span>)</span>
             </button>
             <button id="tabSummaryBtn" onclick="switchTab('summary')" class="flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-800/50">
                 <i class="fa-solid fa-chart-pie"></i>
-                <span>মার্জড স্টক সামারি (In vs Out Balance)</span>
+                <span>মার্জড স্টক সামারি</span>
             </button>
         </div>
 
         <!-- Tab 1: Scan & Entry View -->
-        <div id="tabScanView" class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+        <div id="tabScanView" class="grid grid-cols-1 lg:grid-cols-12 gap-5 no-print">
             
             <!-- Left Column: Camera Upload & Scanner Frame -->
             <div class="lg:col-span-5 flex flex-col space-y-4">
@@ -214,7 +281,6 @@
                     <!-- Scanner Viewport Dropzone -->
                     <div id="scannerViewport" class="relative flex-1 min-h-[220px] sm:min-h-[260px] bg-slate-950 rounded-2xl border-2 border-dashed border-slate-800 hover:border-brand-500/50 transition flex flex-col items-center justify-center p-4 text-center cursor-pointer group overflow-hidden">
                         
-                        <!-- Upload Placeholder UI -->
                         <div id="uploadPlaceholder" class="space-y-3 flex flex-col items-center">
                             <div class="w-14 h-14 rounded-2xl bg-brand-500/10 text-brand-400 flex items-center justify-center group-hover:scale-110 transition duration-300 border border-brand-500/20">
                                 <i class="fa-solid fa-images text-2xl"></i>
@@ -266,9 +332,9 @@
                     <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                         <h2 class="font-bold text-slate-100 text-sm flex items-center">
                             <i class="fa-solid fa-pen-to-square text-brand-400 mr-2"></i>
-                            ২. টাইপ ও ইনভয়েস ডাটা
+                            ২. টাইপ ও ইনভয়েস ডাটা এন্ট্রি
                         </h2>
-                        <span class="text-[11px] text-slate-400">ম্যানুয়াল বা স্ক্যানড এন্ট্রি</span>
+                        <span class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-mono">লাইভ সিঙ্ক হবে</span>
                     </div>
 
                     <!-- Entry Type Selector (Inbound vs Outbound) -->
@@ -300,7 +366,7 @@
                         <!-- Invoice Number -->
                         <div>
                             <label class="block text-[11px] font-semibold text-slate-300 mb-1">
-                                ইনভয়েস নম্বর <span class="text-slate-500 font-normal">(ঐচ্ছিক / অপশনাল)</span>
+                                ইনভয়েস নম্বর <span class="text-slate-500 font-normal">(ঐচ্ছিক)</span>
                             </label>
                             <div class="relative">
                                 <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 text-xs">
@@ -359,17 +425,65 @@
                             রিসেট
                         </button>
                         <button type="submit" class="px-5 py-2 text-xs font-bold rounded-xl text-slate-950 bg-brand-400 hover:bg-brand-500 shadow-lg shadow-brand-500/20 transition flex items-center">
-                            <i class="fa-solid fa-floppy-disk mr-1.5"></i> এন্ট্রি সেভ করুন
+                            <i class="fa-solid fa-cloud-arrow-up mr-1.5"></i> সেভ করুন (সব ফোনে সিঙ্ক হবে)
                         </button>
                     </div>
                 </form>
             </div>
         </div>
 
-        <!-- Tab 2: History View -->
+        <!-- Tab 2: Sheets View (Grid Spreadsheet Style) -->
+        <div id="tabSheetsView" class="hidden space-y-4">
+            <div class="bg-cardbg p-4 rounded-2xl border border-cardborder shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-lg font-bold border border-emerald-500/20">
+                        <i class="fa-solid fa-table-cells"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-bold text-sm text-slate-100 flex items-center">
+                            গুগল শিটস / এক্সেল স্টাইল ভিউ (Spreadsheet View)
+                        </h3>
+                        <p class="text-[11px] text-slate-400">সহজে সব ফোন থেকে এন্ট্রি করা ইনভয়েসগুলোর রো-বাই-রো তথ্য দেখুন</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-2 no-print">
+                    <button onclick="window.print()" class="px-3 py-1.5 text-xs font-bold rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition flex items-center">
+                        <i class="fa-solid fa-print mr-1 text-emerald-400"></i> শিট প্রিন্ট করুন
+                    </button>
+                    <button onclick="exportToCSV()" class="px-3 py-1.5 text-xs font-bold rounded-xl text-slate-950 bg-brand-400 hover:bg-brand-500 transition shadow">
+                        <i class="fa-solid fa-file-excel mr-1"></i> এক্সেল ডাউনলোড
+                    </button>
+                </div>
+            </div>
+
+            <!-- Clean Spreadsheet Grid Table -->
+            <div class="bg-sheetbg rounded-2xl border border-slate-800 shadow-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left sheet-table text-xs font-mono">
+                        <thead class="bg-slate-900 text-slate-300 text-[11px] uppercase font-bold tracking-wider">
+                            <tr>
+                                <th class="p-2.5 text-center w-12 bg-slate-900">#</th>
+                                <th class="p-2.5">তারিখ</th>
+                                <th class="p-2.5">ইনভয়েস নং</th>
+                                <th class="p-2.5 text-center">টাইপ</th>
+                                <th class="p-2.5">পণ্যের নাম</th>
+                                <th class="p-2.5 text-center w-24">পরিমাণ (Qty)</th>
+                                <th class="p-2.5 text-center w-28 no-print">অ্যাকশন</th>
+                            </tr>
+                        </thead>
+                        <tbody id="sheetsTableBody">
+                            <!-- Sheets table populated via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 3: History View -->
         <div id="tabHistoryView" class="hidden space-y-4">
             <!-- Search & Control Bar -->
-            <div class="bg-cardbg p-3.5 rounded-2xl border border-cardborder shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-3">
+            <div class="bg-cardbg p-3.5 rounded-2xl border border-cardborder shadow-xl flex flex-col md:flex-row md:items-center justify-between gap-3 no-print">
                 <div class="relative flex-1">
                     <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-500 text-xs">
                         <i class="fa-solid fa-magnifying-glass"></i>
@@ -379,7 +493,7 @@
                 </div>
                 
                 <button onclick="clearAllDataConfirm()" class="px-3 py-2 text-xs font-semibold rounded-xl text-red-400 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 transition flex items-center justify-center">
-                    <i class="fa-solid fa-trash mr-1.5"></i> সকল ডাটা মুছুন
+                    <i class="fa-solid fa-trash mr-1.5"></i> ক্লাউড ডাটা মুছুন
                 </button>
             </div>
 
@@ -394,7 +508,7 @@
                                 <th class="p-3">তারিখ</th>
                                 <th class="p-3">পণ্যের বিবরণ</th>
                                 <th class="p-3 text-center">আইটেম সংখ্যা</th>
-                                <th class="p-3 text-center">অ্যাকশন</th>
+                                <th class="p-3 text-center no-print">অ্যাকশন</th>
                             </tr>
                         </thead>
                         <tbody id="historyTableBody" class="divide-y divide-slate-800 text-xs">
@@ -410,34 +524,39 @@
             </div>
         </div>
 
-        <!-- Tab 3: Merged Summary View -->
+        <!-- Tab 4: Merged Summary View -->
         <div id="tabSummaryView" class="hidden space-y-4">
             <div class="bg-cardbg p-4 rounded-2xl border border-cardborder shadow-xl flex items-center justify-between">
                 <div>
                     <h3 class="font-bold text-sm text-slate-100 flex items-center">
                         <i class="fa-solid fa-calculator text-brand-400 mr-2"></i>
-                        একত্রিত স্টক বিবরণী (In vs Out Summary)
+                        একত্রিত স্টক বিবরণী (In vs Out Balance Summary)
                     </h3>
-                    <p class="text-[11px] text-slate-400">সকল ইনবাউন্ড ও আউটবাউন্ড সমন্বয় করে বর্তমান মজুদ</p>
+                    <p class="text-[11px] text-slate-400">তিনটি ফোনের সকল ইনবাউন্ড ও আউটবাউন্ড রিয়েল-টাইম মিলিয়ে বর্তমান স্টক</p>
                 </div>
-                <button onclick="exportMergedCSV()" class="px-3 py-1.5 text-xs font-bold rounded-xl text-slate-950 bg-brand-400 hover:bg-brand-500 transition shadow">
-                    <i class="fa-solid fa-file-excel mr-1"></i> সামারি এক্সপোর্ট (CSV)
-                </button>
+                <div class="flex items-center space-x-2 no-print">
+                    <button onclick="window.print()" class="px-3 py-1.5 text-xs font-bold rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 transition">
+                        <i class="fa-solid fa-print mr-1 text-emerald-400"></i> প্রিন্ট
+                    </button>
+                    <button onclick="exportMergedCSV()" class="px-3 py-1.5 text-xs font-bold rounded-xl text-slate-950 bg-brand-400 hover:bg-brand-500 transition shadow">
+                        <i class="fa-solid fa-file-excel mr-1"></i> সামারি CSV
+                    </button>
+                </div>
             </div>
 
             <div class="bg-cardbg rounded-2xl border border-cardborder shadow-xl overflow-hidden">
                 <div class="overflow-x-auto">
-                    <table class="w-full text-left border-collapse">
+                    <table class="w-full text-left sheet-table">
                         <thead class="bg-slate-900 text-[11px] uppercase font-bold text-slate-400 border-b border-slate-800">
                             <tr>
-                                <th class="p-3 pl-4 w-12">ক্রম</th>
+                                <th class="p-3 pl-4 w-12 text-center">#</th>
                                 <th class="p-3">পণ্যের নাম</th>
                                 <th class="p-3 text-center text-emerald-400">মোট ইনবাউন্ড (+)</th>
                                 <th class="p-3 text-center text-amber-400">মোট আউটবাউন্ড (-)</th>
                                 <th class="p-3 text-center text-blue-400">বর্তমান স্টক (Net)</th>
                             </tr>
                         </thead>
-                        <tbody id="mergedSummaryTableBody" class="divide-y divide-slate-800 text-xs">
+                        <tbody id="mergedSummaryTableBody" class="divide-y divide-slate-800 text-xs font-mono">
                             <!-- Merged data rendered dynamically -->
                         </tbody>
                     </table>
@@ -448,24 +567,88 @@
     </main>
 
     <!-- Mobile Bottom Navigation Bar -->
-    <nav class="md:hidden fixed bottom-0 inset-x-0 bg-slate-950/95 backdrop-blur border-t border-slate-800 z-40 flex items-center justify-around py-2">
-        <button id="mobileNavScan" onclick="switchTab('scan')" class="flex flex-col items-center justify-center text-brand-400 px-3 py-1 font-bold">
+    <nav class="md:hidden fixed bottom-0 inset-x-0 bg-slate-950/95 backdrop-blur border-t border-slate-800 z-40 flex items-center justify-around py-2 no-print">
+        <button id="mobileNavScan" onclick="switchTab('scan')" class="flex flex-col items-center justify-center text-brand-400 px-2 py-1 font-bold">
             <i class="fa-solid fa-pen-to-square text-base"></i>
             <span class="text-[10px] mt-0.5">এন্ট্রি</span>
         </button>
-        <button id="mobileNavHistory" onclick="switchTab('history')" class="flex flex-col items-center justify-center text-slate-400 px-3 py-1">
-            <i class="fa-solid fa-list-check text-base"></i>
-            <span class="text-[10px] mt-0.5">রেকর্ড</span>
+        <button id="mobileNavSheets" onclick="switchTab('sheets')" class="flex flex-col items-center justify-center text-slate-400 px-2 py-1">
+            <i class="fa-solid fa-table-cells text-base text-emerald-400"></i>
+            <span class="text-[10px] mt-0.5">শিট ভিউ</span>
         </button>
-        <button id="mobileNavSummary" onclick="switchTab('summary')" class="flex flex-col items-center justify-center text-slate-400 px-3 py-1">
+        <button id="mobileNavHistory" onclick="switchTab('history')" class="flex flex-col items-center justify-center text-slate-400 px-2 py-1">
+            <i class="fa-solid fa-list-check text-base"></i>
+            <span class="text-[10px] mt-0.5">লিস্ট</span>
+        </button>
+        <button id="mobileNavSummary" onclick="switchTab('summary')" class="flex flex-col items-center justify-center text-slate-400 px-2 py-1">
             <i class="fa-solid fa-chart-pie text-base"></i>
             <span class="text-[10px] mt-0.5">স্টক</span>
         </button>
     </nav>
 
-    <!-- Modals -->
+    <!-- MODALS SECTION -->
+    
+    <!-- Edit Invoice Modal -->
+    <div id="editModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm no-print">
+        <div class="bg-cardbg border border-cardborder rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-sm text-white flex items-center">
+                    <i class="fa-solid fa-pen-to-square text-brand-400 mr-2"></i>
+                    ইনভয়েস এডিট করুন
+                </h3>
+                <button onclick="closeEditModal()" class="text-slate-400 hover:text-white text-lg">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <form id="editInvoiceForm" onsubmit="submitInvoiceEdit(event)" class="space-y-3 text-xs">
+                <input type="hidden" id="editDocId">
+
+                <div class="grid grid-cols-2 gap-2">
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">ইনভয়েস নম্বর</label>
+                        <input type="text" id="editInvoiceNo" required class="w-full p-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 font-mono focus:ring-2 focus:ring-brand-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-semibold text-slate-400 mb-1">তারিখ</label>
+                        <input type="date" id="editInvoiceDate" required class="w-full p-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 focus:ring-2 focus:ring-brand-500">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-400 mb-1">এন্ট্রি টাইপ</label>
+                    <select id="editInvoiceType" class="w-full p-2 bg-slate-950 border border-slate-800 rounded-xl text-slate-100 font-bold focus:ring-2 focus:ring-brand-500">
+                        <option value="inbound">📥 ইনবাউন্ড (Inbound)</option>
+                        <option value="outbound">📤 আউটবাউন্ড (Outbound)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="font-semibold text-slate-400">পণ্যের তালিকা</label>
+                        <button type="button" onclick="addEditProductRow()" class="text-[11px] text-brand-400 hover:text-brand-300 font-bold">
+                            + আইটেম
+                        </button>
+                    </div>
+                    <div class="border border-slate-800 rounded-xl bg-slate-950 p-2 space-y-2" id="editProductsContainer">
+                        <!-- Dynamic Edit Row Items -->
+                    </div>
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2">
+                    <button type="button" onclick="closeEditModal()" class="px-4 py-2 bg-slate-800 text-slate-300 font-bold rounded-xl text-xs">
+                        বাতিল
+                    </button>
+                    <button type="submit" class="px-5 py-2 bg-brand-400 hover:bg-brand-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg">
+                        <i class="fa-solid fa-floppy-disk mr-1"></i> সেভ করুন
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Invoice Detail Modal -->
-    <div id="invoiceModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+    <div id="invoiceModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm no-print">
         <div class="bg-cardbg border border-cardborder rounded-2xl max-w-lg w-full p-5 shadow-2xl space-y-4">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
                 <h3 class="font-bold text-sm text-white" id="modalTitle">ইনভয়েস বিবরণ</h3>
@@ -474,8 +657,11 @@
                 </button>
             </div>
             <div id="modalContent" class="space-y-3 text-xs"></div>
-            <div class="pt-2 text-right">
-                <button onclick="closeModal()" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs">
+            <div class="pt-2 flex justify-between items-center">
+                <button onclick="window.print()" class="px-3 py-1.5 bg-slate-800 text-brand-400 hover:bg-slate-700 font-bold rounded-xl text-xs">
+                    <i class="fa-solid fa-print mr-1"></i> প্রিন্ট
+                </button>
+                <button onclick="closeModal()" class="px-4 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold rounded-xl text-xs">
                     বন্ধ করুন
                 </button>
             </div>
@@ -483,7 +669,7 @@
     </div>
 
     <!-- Product Catalog Modal -->
-    <div id="catalogModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm">
+    <div id="catalogModal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm no-print">
         <div class="bg-cardbg border border-cardborder rounded-2xl max-w-xl w-full p-5 shadow-2xl space-y-4">
             <div class="flex justify-between items-center border-b border-slate-800 pb-3">
                 <h3 class="font-bold text-sm text-white flex items-center">
@@ -518,16 +704,94 @@
     </div>
 
     <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-16 md:bottom-6 right-4 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+    <div id="toast" class="fixed bottom-16 md:bottom-6 right-4 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none no-print">
         <div class="bg-brand-500 text-slate-950 px-4 py-2.5 rounded-xl font-bold text-xs shadow-xl flex items-center space-x-2 border border-brand-400">
             <i class="fa-solid fa-circle-check"></i>
             <span id="toastMsg">মেসেজ</span>
         </div>
     </div>
 
-    <!-- JavaScript Logic -->
+    <!-- Firebase Imports and Realtime Firestore Multi-device Sync Logic -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, collection, doc, setDoc, deleteDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase Configuration setup with safe fallback
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config) 
+            : {
+                apiKey: "AIzaSyDemoPlaceholderOnlyForLocalTesting123",
+                authDomain: "warehouse-app-demo.firebaseapp.com",
+                projectId: "warehouse-app-demo",
+                storageBucket: "warehouse-app-demo.appspot.com",
+                messagingSenderId: "123456789",
+                appId: "1:123456789:web:demo123"
+            };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'warehouse-shared-db-v1';
+
+        // Public Collection path according to Rule 1
+        const invoicesCollection = collection(db, 'artifacts', appId, 'public', 'data', 'invoices');
+
+        window.db = db;
+        window.invoicesCollection = invoicesCollection;
+        window.doc = doc;
+        window.setDoc = setDoc;
+        window.deleteDoc = deleteDoc;
+
+        async function initAuthAndSync() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                console.log("Firebase Auth Connected successfully!");
+
+                // Attach Real-time listener across all 3 devices
+                onSnapshot(invoicesCollection, (snapshot) => {
+                    const docsData = [];
+                    snapshot.forEach((docSnap) => {
+                        docsData.push({
+                            id: docSnap.id,
+                            ...docSnap.data()
+                        });
+                    });
+
+                    // Sort newest first
+                    docsData.sort((a, b) => (b.timestampRaw || 0) - (a.timestampRaw || 0));
+
+                    window.invoiceRecords = docsData;
+                    window.updateStats();
+                    window.renderHistoryTable();
+                    window.renderSheetsTable();
+                    window.renderMergedSummaryTable();
+
+                    const badge = document.getElementById('syncBadge');
+                    if (badge) {
+                        badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 animate-pulse"></span> ৩টি ফোনেই সিঙ্কড (${docsData.length}টি)`;
+                    }
+                }, (error) => {
+                    console.error("Firestore sync error:", error);
+                    const badge = document.getElementById('syncBadge');
+                    if (badge) badge.innerText = "অফলাইন/অফলাইন মোড";
+                });
+
+            } catch (err) {
+                console.warn("Firebase auth warning, falling back to local memory:", err);
+            }
+        }
+
+        initAuthAndSync();
+    </script>
+
     <script>
-        // Default Inbuilt Catalog (Updated with 230 products)
+        // Default Inbuilt Catalog (230 products)
         let PRODUCT_CATALOG = [
             "Pegasus 15 SC — 50 ml",
             "Amistar Top — 500 ml",
@@ -761,116 +1025,60 @@
             "Samsong 18L (Lithium)"
         ];
 
-        const SAMPLE_BATCH_INVOICES = [
-            {
-                type: "inbound",
-                invoiceNo: "INV-IN-101",
-                date: "2026-09-28",
-                products: [
-                    { name: "Pegasus 15 SC — 50 ml", qty: 50 },
-                    { name: "Amistar Top — 500 ml", qty: 20 },
-                    { name: "MHM Tiger 16", qty: 10 }
-                ]
-            },
-            {
-                type: "outbound",
-                invoiceNo: "INV-OUT-102",
-                date: "2026-09-28",
-                products: [
-                    { name: "Pegasus 15 SC — 50 ml", qty: 15 },
-                    { name: "Samsong 18L (Lithium)", qty: 5 }
-                ]
-            }
-        ];
-
-        let invoiceRecords = [];
+        window.invoiceRecords = [];
         let autoInvoiceCounter = 1;
-        let deferredPrompt;
 
         window.onload = function() {
-            // Updated LocalStorage key to force update new catalog
-            localStorage.setItem('warehouse_product_catalog_v5', JSON.stringify(PRODUCT_CATALOG));
-
-            const saved = localStorage.getItem('warehouse_invoices_data_v5');
-            if (saved) {
-                try {
-                    invoiceRecords = JSON.parse(saved);
-                } catch (e) {
-                    invoiceRecords = [];
-                }
-            } else {
-                invoiceRecords = SAMPLE_BATCH_INVOICES.map((inv, index) => ({
-                    id: Date.now() + index,
-                    type: inv.type || 'inbound',
-                    invoiceNo: inv.invoiceNo,
-                    date: inv.date,
-                    products: mergeProductList(inv.products),
-                    imageUrl: "https://placehold.co/400x600/0f172a/34d399?text=Demo+" + inv.invoiceNo,
-                    timestamp: new Date().toLocaleString('bn-BD')
-                }));
-                saveToLocalStorage();
+            const savedCatalog = localStorage.getItem('warehouse_product_catalog_v6');
+            if (savedCatalog) {
+                try { PRODUCT_CATALOG = JSON.parse(savedCatalog); } catch(e){}
             }
 
             addProductRow();
-            updateStats();
-            renderHistoryTable();
             document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
         };
 
-        // PWA Installation prompt logic
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            const btn = document.getElementById('pwaInstallBtn');
-            if (btn) btn.classList.remove('hidden');
-        });
-
-        function installAppPrompt() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        showToast('অ্যাপ ইনস্টল করা হয়েছে!');
-                    }
-                    deferredPrompt = null;
-                });
-            } else {
-                alert("আপনার ব্রাউজারের ৩-ডট (⋮) মেনু থেকে 'Add to Home Screen' ক্লিক করুন।");
-            }
-        }
-
         function switchTab(tabName) {
             const scanView = document.getElementById('tabScanView');
+            const sheetsView = document.getElementById('tabSheetsView');
             const historyView = document.getElementById('tabHistoryView');
             const summaryView = document.getElementById('tabSummaryView');
 
             const scanBtn = document.getElementById('tabScanBtn');
+            const sheetsBtn = document.getElementById('tabSheetsBtn');
             const historyBtn = document.getElementById('tabHistoryBtn');
             const summaryBtn = document.getElementById('tabSummaryBtn');
 
             const mobScan = document.getElementById('mobileNavScan');
+            const mobSheets = document.getElementById('mobileNavSheets');
             const mobHist = document.getElementById('mobileNavHistory');
             const mobSum = document.getElementById('mobileNavSummary');
 
-            [scanBtn, historyBtn, summaryBtn].forEach(btn => {
+            [scanBtn, sheetsBtn, historyBtn, summaryBtn].forEach(btn => {
                 if (btn) btn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-800/50";
             });
 
-            [mobScan, mobHist, mobSum].forEach(m => {
-                if (m) m.className = "flex flex-col items-center justify-center text-slate-400 px-3 py-1";
+            [mobScan, mobSheets, mobHist, mobSum].forEach(m => {
+                if (m) m.className = "flex flex-col items-center justify-center text-slate-400 px-2 py-1";
             });
 
             scanView.classList.add('hidden');
+            sheetsView.classList.add('hidden');
             historyView.classList.add('hidden');
             summaryView.classList.add('hidden');
 
-            const activeDesktop = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 bg-brand-500/20 text-brand-400 border border-brand-500/40";
-            const activeMobile = "flex flex-col items-center justify-center text-brand-400 px-3 py-1 font-bold";
+            const activeDesktop = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 bg-brand-500/20 text-brand-400 border border-brand-500/40 font-bold";
+            const activeMobile = "flex flex-col items-center justify-center text-brand-400 px-2 py-1 font-bold";
 
             if (tabName === 'scan') {
                 scanView.classList.remove('hidden');
                 if (scanBtn) scanBtn.className = activeDesktop;
                 if (mobScan) mobScan.className = activeMobile;
+            } else if (tabName === 'sheets') {
+                sheetsView.classList.remove('hidden');
+                if (sheetsBtn) sheetsBtn.className = activeDesktop;
+                if (mobSheets) mobSheets.className = activeMobile;
+                renderSheetsTable();
             } else if (tabName === 'history') {
                 historyView.classList.remove('hidden');
                 if (historyBtn) historyBtn.className = activeDesktop;
@@ -955,7 +1163,6 @@
                 document.getElementById('inputInvoiceNo').value = `INV-SCAN-${Math.floor(1000 + Math.random() * 9000)}`;
                 document.getElementById('productTableBody').innerHTML = '';
 
-                // Dynamically pick 2 to 4 products randomly from the updated PRODUCT_CATALOG
                 const numItems = Math.floor(Math.random() * 3) + 2;
                 const shuffled = [...PRODUCT_CATALOG].sort(() => 0.5 - Math.random());
                 const selectedProducts = shuffled.slice(0, numItems);
@@ -965,29 +1172,53 @@
                     addProductRow(prod, randomQty);
                 });
 
-                showToast(`${files.length}টি ইনভয়েস স্ক্যান সম্পন্ন (${numItems}টি ক্যাটালগ প্রোডাক্ট সনাক্ত)!`);
-            }, 1500);
+                showToast(`${files.length}টি ইনভয়েস স্ক্যান সম্পন্ন (${numItems}টি প্রোডাক্ট সনাক্ত)!`);
+            }, 1200);
         }
 
         function loadSampleBatchInvoices(event) {
             if (event) event.stopPropagation();
 
-            SAMPLE_BATCH_INVOICES.forEach((inv, idx) => {
-                invoiceRecords.unshift({
-                    id: Date.now() + idx,
-                    type: inv.type || 'inbound',
+            const samples = [
+                {
+                    type: "inbound",
+                    invoiceNo: "INV-IN-101",
+                    date: "2026-09-28",
+                    products: [
+                        { name: "Pegasus 15 SC — 50 ml", qty: 50 },
+                        { name: "Amistar Top — 500 ml", qty: 20 },
+                        { name: "MHM Tiger 16", qty: 10 }
+                    ]
+                },
+                {
+                    type: "outbound",
+                    invoiceNo: "INV-OUT-102",
+                    date: "2026-09-28",
+                    products: [
+                        { name: "Pegasus 15 SC — 50 ml", qty: 15 },
+                        { name: "Samsong 18L (Lithium)", qty: 5 }
+                    ]
+                }
+            ];
+
+            samples.forEach((inv, idx) => {
+                const docId = 'doc_' + Date.now() + '_' + idx;
+                const data = {
+                    type: inv.type,
                     invoiceNo: inv.invoiceNo,
                     date: inv.date,
-                    products: mergeProductList(inv.products),
-                    imageUrl: "https://placehold.co/400x600/0f172a/34d399?text=Demo+" + inv.invoiceNo,
+                    products: inv.products,
+                    timestampRaw: Date.now() + idx,
                     timestamp: new Date().toLocaleString('bn-BD')
-                });
+                };
+
+                if (window.setDoc && window.doc && window.invoicesCollection) {
+                    window.setDoc(window.doc(window.invoicesCollection, docId), data);
+                }
             });
 
-            saveToLocalStorage();
-            updateStats();
-            showToast("ডেমো ইনভয়েস ডাটা সফলভাবে লোড হয়েছে!");
-            switchTab('history');
+            showToast("ডেমো ইনভয়েস ক্লাউডে সেভ হয়েছে!");
+            switchTab('sheets');
         }
 
         function mergeProductList(productsList) {
@@ -1008,7 +1239,7 @@
             }));
         }
 
-        function saveInvoiceRecord(e) {
+        async function saveInvoiceRecord(e) {
             e.preventDefault();
 
             const selectedType = document.querySelector('input[name="entryType"]:checked')?.value || 'inbound';
@@ -1035,23 +1266,34 @@
                 inputInv = `INV-AUTO-${String(autoInvoiceCounter++).padStart(3, '0')}`;
             }
 
-            const newRecord = {
-                id: Date.now(),
+            const docId = 'inv_' + Date.now();
+            const recordData = {
                 type: selectedType,
                 invoiceNo: inputInv,
                 date: document.getElementById('inputDate').value,
                 products: mergedProducts,
-                imageUrl: "https://placehold.co/400x600/0f172a/34d399?text=Manual+Entry",
+                timestampRaw: Date.now(),
                 timestamp: new Date().toLocaleString('bn-BD')
             };
 
-            invoiceRecords.unshift(newRecord);
-            saveToLocalStorage();
-            updateStats();
+            try {
+                if (window.setDoc && window.doc && window.invoicesCollection) {
+                    await window.setDoc(window.doc(window.invoicesCollection, docId), recordData);
+                    showToast(`${selectedType === 'inbound' ? 'ইনবাউন্ড' : 'আউটবাউন্ড'} #${inputInv} ক্লাউডে সেভ হয়েছে!`);
+                } else {
+                    window.invoiceRecords.unshift({ id: docId, ...recordData });
+                    updateStats();
+                    renderHistoryTable();
+                    renderSheetsTable();
+                    showToast("রেকর্ড সেভ হয়েছে!");
+                }
+            } catch (err) {
+                console.error("Save error:", err);
+                showToast("সেভ করতে সমস্যা হয়েছে।");
+            }
 
-            showToast(`${selectedType === 'inbound' ? 'ইনবাউন্ড' : 'আউটবাউন্ড'} এন্ট্রি #${inputInv} সেভ হয়েছে!`);
             resetForm();
-            switchTab('history');
+            switchTab('sheets');
         }
 
         function resetForm() {
@@ -1064,26 +1306,168 @@
             document.getElementById('inputDate').value = new Date().toISOString().split('T')[0];
         }
 
-        function renderHistoryTable() {
-            const tbody = document.getElementById('historyTableBody');
-            const emptyState = document.getElementById('emptyState');
-            const searchTerm = document.getElementById('searchInvoiceInput').value.toLowerCase().trim();
+        function openEditModal(docId) {
+            const rec = window.invoiceRecords.find(r => r.id === docId);
+            if (!rec) return;
+
+            document.getElementById('editDocId').value = rec.id;
+            document.getElementById('editInvoiceNo').value = rec.invoiceNo;
+            document.getElementById('editInvoiceDate').value = rec.date;
+            document.getElementById('editInvoiceType').value = rec.type || 'inbound';
+
+            const container = document.getElementById('editProductsContainer');
+            container.innerHTML = '';
+
+            if (rec.products && rec.products.length > 0) {
+                rec.products.forEach(p => {
+                    addEditProductRow(p.name, p.qty);
+                });
+            } else {
+                addEditProductRow();
+            }
+
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        function addEditProductRow(name = '', qty = 1) {
+            const container = document.getElementById('editProductsContainer');
+            const rowId = 'editRow_' + Date.now() + Math.random().toString(36).substring(2, 5);
+
+            const div = document.createElement('div');
+            div.id = rowId;
+            div.className = "flex items-center space-x-2";
+            div.innerHTML = `
+                <input type="text" list="editCatalogList" value="${name}" placeholder="পণ্যের নাম" class="edit-p-name flex-1 p-2 bg-slate-900 border border-slate-800 rounded-xl text-slate-100">
+                <datalist id="editCatalogList">
+                    ${PRODUCT_CATALOG.map(p => `<option value="${p}">`).join('')}
+                </datalist>
+                <input type="number" min="1" value="${qty}" class="edit-p-qty w-20 p-2 text-center bg-slate-900 border border-slate-800 rounded-xl text-brand-400 font-mono font-bold">
+                <button type="button" onclick="document.getElementById('${rowId}').remove()" class="text-red-400 hover:text-red-300 p-1">
+                    <i class="fa-solid fa-trash-can"></i>
+                </button>
+            `;
+            container.appendChild(div);
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+        }
+
+        async function submitInvoiceEdit(e) {
+            e.preventDefault();
+            const docId = document.getElementById('editDocId').value;
+            const invoiceNo = document.getElementById('editInvoiceNo').value;
+            const date = document.getElementById('editInvoiceDate').value;
+            const type = document.getElementById('editInvoiceType').value;
+
+            const productDivs = document.querySelectorAll('#editProductsContainer > div');
+            const products = [];
+
+            productDivs.forEach(d => {
+                const name = d.querySelector('.edit-p-name')?.value.trim();
+                const qty = parseFloat(d.querySelector('.edit-p-qty')?.value || 1);
+                if (name) {
+                    products.push({ name, qty });
+                }
+            });
+
+            if (products.length === 0) {
+                showToast("অন্তত একটি প্রোডাক্ট রাখুন!");
+                return;
+            }
+
+            const mergedProducts = mergeProductList(products);
+
+            const updatedData = {
+                type: type,
+                invoiceNo: invoiceNo,
+                date: date,
+                products: mergedProducts,
+                timestampRaw: Date.now(),
+                timestamp: new Date().toLocaleString('bn-BD')
+            };
+
+            try {
+                if (window.setDoc && window.doc && window.invoicesCollection) {
+                    await window.setDoc(window.doc(window.invoicesCollection, docId), updatedData);
+                    showToast("ইনভয়েস সফলভাবে এডিট হয়েছে!");
+                }
+            } catch (err) {
+                console.error("Update error:", err);
+            }
+
+            closeEditModal();
+        }
+
+        function renderSheetsTable() {
+            const tbody = document.getElementById('sheetsTableBody');
+            if (!tbody) return;
 
             tbody.innerHTML = '';
 
-            const filtered = invoiceRecords.filter(item => {
-                const matchInvoice = item.invoiceNo.toLowerCase().includes(searchTerm);
+            let rowCounter = 1;
+
+            if (!window.invoiceRecords || window.invoiceRecords.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-slate-500 font-sans">কোনো ইনভয়েস ডাটা নেই</td></tr>`;
+                return;
+            }
+
+            window.invoiceRecords.forEach(rec => {
+                const isInbound = rec.type === 'inbound';
+                const typeBadge = isInbound 
+                    ? `<span class="text-emerald-400 font-bold">IN (ইন)</span>`
+                    : `<span class="text-amber-400 font-bold">OUT (আউট)</span>`;
+
+                if (rec.products && rec.products.length > 0) {
+                    rec.products.forEach((p, pIdx) => {
+                        const tr = document.createElement('tr');
+                        tr.innerHTML = `
+                            <td class="p-2.5 text-center text-slate-500">${rowCounter++}</td>
+                            <td class="p-2.5 text-slate-300">${rec.date}</td>
+                            <td class="p-2.5 font-bold text-white">${rec.invoiceNo}</td>
+                            <td class="p-2.5 text-center">${typeBadge}</td>
+                            <td class="p-2.5 font-sans font-semibold text-slate-200">${p.name}</td>
+                            <td class="p-2.5 text-center font-bold ${isInbound ? 'text-emerald-400' : 'text-amber-400'}">${p.qty} টি</td>
+                            <td class="p-2.5 text-center space-x-1 no-print">
+                                ${pIdx === 0 ? `
+                                    <button onclick="openEditModal('${rec.id}')" title="এডিট করুন" class="px-2 py-1 text-[11px] bg-brand-500/20 text-brand-300 hover:bg-brand-500/30 rounded border border-brand-500/30 transition">
+                                        <i class="fa-solid fa-pen"></i> এডিট
+                                    </button>
+                                    <button onclick="deleteRecord('${rec.id}')" title="মুছুন" class="px-2 py-1 text-[11px] bg-red-500/20 text-red-300 hover:bg-red-500/30 rounded border border-red-500/30 transition">
+                                        <i class="fa-solid fa-trash"></i>
+                                    </button>
+                                ` : ''}
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
+                }
+            });
+        }
+
+        function renderHistoryTable() {
+            const tbody = document.getElementById('historyTableBody');
+            const emptyState = document.getElementById('emptyState');
+            const searchElem = document.getElementById('searchInvoiceInput');
+            const searchTerm = searchElem ? searchElem.value.toLowerCase().trim() : '';
+
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            const filtered = (window.invoiceRecords || []).filter(item => {
+                const matchInvoice = (item.invoiceNo || '').toLowerCase().includes(searchTerm);
                 const matchProduct = item.products && item.products.some(p => p.name.toLowerCase().includes(searchTerm));
                 return matchInvoice || matchProduct;
             });
 
-            document.getElementById('historyBadgeCount').innerText = filtered.length;
+            const badgeElem = document.getElementById('historyBadgeCount');
+            if (badgeElem) badgeElem.innerText = filtered.length;
 
             if (filtered.length === 0) {
-                emptyState.classList.remove('hidden');
+                if (emptyState) emptyState.classList.remove('hidden');
                 return;
             } else {
-                emptyState.classList.add('hidden');
+                if (emptyState) emptyState.classList.add('hidden');
             }
 
             filtered.forEach(rec => {
@@ -1114,11 +1498,14 @@
                     <td class="p-3 font-mono text-slate-400">${rec.date}</td>
                     <td class="p-3"><div class="flex flex-wrap items-center">${productListHtml}</div></td>
                     <td class="p-3 text-center font-bold text-slate-300 font-mono">${productCount} টি</td>
-                    <td class="p-3 text-center space-x-1">
-                        <button onclick="viewInvoiceDetail(${rec.id})" class="p-1.5 text-slate-400 hover:text-brand-400 hover:bg-slate-800 rounded-lg transition">
+                    <td class="p-3 text-center space-x-1 no-print">
+                        <button onclick="openEditModal('${rec.id}')" title="এডিট করুন" class="p-1.5 text-brand-400 hover:bg-slate-800 rounded-lg transition">
+                            <i class="fa-solid fa-pen-to-square"></i>
+                        </button>
+                        <button onclick="viewInvoiceDetail('${rec.id}')" title="ডিটেইলস" class="p-1.5 text-slate-400 hover:text-brand-400 hover:bg-slate-800 rounded-lg transition">
                             <i class="fa-solid fa-eye"></i>
                         </button>
-                        <button onclick="deleteRecord(${rec.id})" class="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition">
+                        <button onclick="deleteRecord('${rec.id}')" title="মুছুন" class="p-1.5 text-slate-400 hover:text-red-400 hover:bg-slate-800 rounded-lg transition">
                             <i class="fa-solid fa-trash-can"></i>
                         </button>
                     </td>
@@ -1130,11 +1517,12 @@
 
         function renderMergedSummaryTable() {
             const tbody = document.getElementById('mergedSummaryTableBody');
-            tbody.innerHTML = '';
+            if (!tbody) return;
 
+            tbody.innerHTML = '';
             const stockMap = {};
 
-            invoiceRecords.forEach(inv => {
+            (window.invoiceRecords || []).forEach(inv => {
                 const isInbound = inv.type === 'inbound';
                 if (inv.products && inv.products.length > 0) {
                     inv.products.forEach(p => {
@@ -1156,7 +1544,7 @@
 
             const keys = Object.keys(stockMap);
             if (keys.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500">কোনো সেভ করা ডাটা নেই</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-500 font-sans">কোনো ডাটা নেই</td></tr>`;
                 return;
             }
 
@@ -1168,8 +1556,8 @@
                 tr.className = "hover:bg-slate-900/60 transition border-b border-slate-800/80";
 
                 tr.innerHTML = `
-                    <td class="p-3 pl-4 font-mono font-bold text-slate-500">${index + 1}</td>
-                    <td class="p-3 font-semibold text-slate-200">${prodName}</td>
+                    <td class="p-3 pl-4 font-mono font-bold text-slate-500 text-center">${index + 1}</td>
+                    <td class="p-3 font-semibold text-slate-200 font-sans">${prodName}</td>
                     <td class="p-3 text-center font-mono text-emerald-400 font-bold">+${data.inQty}</td>
                     <td class="p-3 text-center font-mono text-amber-400 font-bold">-${data.outQty}</td>
                     <td class="p-3 text-center">
@@ -1184,7 +1572,7 @@
         }
 
         function viewInvoiceDetail(id) {
-            const rec = invoiceRecords.find(r => r.id === id);
+            const rec = (window.invoiceRecords || []).find(r => r.id === id);
             if (!rec) return;
 
             document.getElementById('modalTitle').innerText = `ডিটেইলস: #${rec.invoiceNo}`;
@@ -1200,14 +1588,14 @@
             }
 
             document.getElementById('modalContent').innerHTML = `
-                <div class="grid grid-cols-2 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
+                <div class="grid grid-cols-2 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 font-mono">
                     <div>
                         <span class="text-slate-500 block text-[10px]">টাইপ:</span>
                         <span class="font-bold ${rec.type === 'inbound' ? 'text-emerald-400' : 'text-amber-400'}">${rec.type === 'inbound' ? '📥 ইনবাউন্ড' : '📤 আউটবাউন্ড'}</span>
                     </div>
                     <div>
                         <span class="text-slate-500 block text-[10px]">তারিখ:</span>
-                        <span class="font-mono text-slate-200">${rec.date}</span>
+                        <span class="text-slate-200">${rec.date}</span>
                     </div>
                 </div>
 
@@ -1226,23 +1614,29 @@
             document.getElementById('invoiceModal').classList.add('hidden');
         }
 
-        function deleteRecord(id) {
-            if (confirm("আপনি কি নিশ্চিত যে এই রেকর্ডটি মুছে ফেলতে চান?")) {
-                invoiceRecords = invoiceRecords.filter(r => r.id !== id);
-                saveToLocalStorage();
-                updateStats();
-                renderHistoryTable();
-                showToast("রেকর্ড মুছে ফেলা হয়েছে।");
+        async function deleteRecord(id) {
+            if (confirm("আপনি কি নিশ্চিত যে এই ইনভয়েসটি মুছে ফেলতে চান? (তিনটি ফোনেই মুছে যাবে)")) {
+                try {
+                    if (window.deleteDoc && window.doc && window.invoicesCollection) {
+                        await window.deleteDoc(window.doc(window.invoicesCollection, id));
+                        showToast("ইনভয়েস সফলভাবে মুছে ফেলা হয়েছে।");
+                    }
+                } catch(err) {
+                    console.error("Delete error:", err);
+                }
             }
         }
 
-        function clearAllDataConfirm() {
-            if (confirm("সতর্কতা: আপনার সকল সেভ করা ইনবাউন্ড ও আউটবাউন্ড ডাটা মুছে যাবে!")) {
-                invoiceRecords = [];
-                saveToLocalStorage();
-                updateStats();
-                renderHistoryTable();
-                showToast("সকল ডাটা মুছে ফেলা হয়েছে।");
+        async function clearAllDataConfirm() {
+            if (confirm("সতর্কতা: আপনার সকল ইনভয়েস ক্লাউড ডাটা মুছে যাবে!")) {
+                if (window.invoiceRecords) {
+                    for (let item of window.invoiceRecords) {
+                        if (window.deleteDoc && window.doc && window.invoicesCollection) {
+                            await window.deleteDoc(window.doc(window.invoicesCollection, item.id));
+                        }
+                    }
+                }
+                showToast("সকল ক্লাউড ডাটা মুছে ফেলা হয়েছে।");
             }
         }
 
@@ -1268,7 +1662,7 @@
                 if (lines.length > 0) {
                     document.getElementById('catalogTextarea').value = lines.join('\n');
                     document.getElementById('catalogCountDisplay').innerText = lines.length;
-                    showToast(`${lines.length} টি প্রোডাক্ট ক্যাটালগে যুক্ত হয়েছে!`);
+                    showToast(`${lines.length} টি প্রোডাক্ট ফাইল থেকে লোড হয়েছে!`);
                 }
             };
             reader.readAsText(file);
@@ -1284,7 +1678,7 @@
             }
 
             PRODUCT_CATALOG = Array.from(new Set(items));
-            localStorage.setItem('warehouse_product_catalog_v5', JSON.stringify(PRODUCT_CATALOG));
+            localStorage.setItem('warehouse_product_catalog_v6', JSON.stringify(PRODUCT_CATALOG));
             
             showToast(`${PRODUCT_CATALOG.length} টি প্রোডাক্ট ক্যাটালগে সেভ হয়েছে!`);
             closeCatalogModal();
@@ -1295,13 +1689,13 @@
                 const rowId = row.id.replace('row_', '');
                 const datalist = document.getElementById(`productListOptions_${rowId}`);
                 if (datalist) {
-                    datalist.innerHTML = PRODUCT_CATALOG.map(p => `<option value="${p}">`).join('');
+                    datalist.innerHTML = PRODUCT_CATALOG.map(p => `<option value="${p}">`).join('')
                 }
             });
         }
 
         function exportToCSV() {
-            if (invoiceRecords.length === 0) {
+            if (!window.invoiceRecords || window.invoiceRecords.length === 0) {
                 showToast("এক্সপোর্ট করার জন্য ডাটা নেই!");
                 return;
             }
@@ -1309,7 +1703,7 @@
             let csvContent = "\uFEFF";
             csvContent += "Type,Invoice No,Date,Product Name,Quantity\n";
 
-            invoiceRecords.forEach(r => {
+            window.invoiceRecords.forEach(r => {
                 if (r.products && r.products.length > 0) {
                     r.products.forEach(p => {
                         csvContent += `"${r.type.toUpperCase()}","${r.invoiceNo}","${r.date}","${p.name}","${p.qty}"\n`;
@@ -1330,13 +1724,13 @@
         }
 
         function exportMergedCSV() {
-            if (invoiceRecords.length === 0) {
+            if (!window.invoiceRecords || window.invoiceRecords.length === 0) {
                 showToast("ডাউনলোড করার জন্য ডাটা নেই!");
                 return;
             }
 
             const stockMap = {};
-            invoiceRecords.forEach(inv => {
+            window.invoiceRecords.forEach(inv => {
                 const isIn = inv.type === 'inbound';
                 if (inv.products) {
                     inv.products.forEach(p => {
@@ -1367,15 +1761,11 @@
             showToast("স্টক সামারি CSV ডাউনলোড হয়েছে!");
         }
 
-        function saveToLocalStorage() {
-            localStorage.setItem('warehouse_invoices_data_v5', JSON.stringify(invoiceRecords));
-        }
-
         function updateStats() {
             let totalInbound = 0;
             let totalOutbound = 0;
 
-            invoiceRecords.forEach(inv => {
+            (window.invoiceRecords || []).forEach(inv => {
                 const isIn = inv.type === 'inbound';
                 if (inv.products) {
                     inv.products.forEach(p => {
@@ -1386,16 +1776,20 @@
                 }
             });
 
-            document.getElementById('statInboundCount').innerText = `${totalInbound} টি`;
-            document.getElementById('statOutboundCount').innerText = `${totalOutbound} টি`;
-            document.getElementById('statNetStockCount').innerText = `${totalInbound - totalOutbound} টি`;
+            const inElem = document.getElementById('statInboundCount');
+            const outElem = document.getElementById('statOutboundCount');
+            const netElem = document.getElementById('statNetStockCount');
+            const catElem = document.getElementById('statCatalogCount');
 
-            const catalogElem = document.getElementById('statCatalogCount');
-            if (catalogElem) catalogElem.innerText = `${PRODUCT_CATALOG.length} টি`;
+            if (inElem) inElem.innerText = `${totalInbound} টি`;
+            if (outElem) outElem.innerText = `${totalOutbound} টি`;
+            if (netElem) netElem.innerText = `${totalInbound - totalOutbound} টি`;
+            if (catElem) catElem.innerText = `${PRODUCT_CATALOG.length} টি`;
         }
 
         function showToast(msg) {
             const toast = document.getElementById('toast');
+            if (!toast) return;
             document.getElementById('toastMsg').innerText = msg;
             toast.classList.remove('translate-y-20', 'opacity-0');
             
