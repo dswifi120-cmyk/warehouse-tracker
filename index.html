@@ -251,7 +251,7 @@
                         <!-- Initial Row -->
                         <div class="product-row grid grid-cols-12 gap-2 items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
                             <div class="col-span-7 sm:col-span-8">
-                                <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" required>
+                                <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" autocomplete="off" required>
                             </div>
                             <div class="col-span-3 sm:col-span-3">
                                 <input type="number" min="1" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="Qty" required>
@@ -329,7 +329,8 @@
         let invoicesRef = null;
         let productsRef = null;
         let invoicesList = [];
-        let catalogSet = new Set();
+        let dbCatalogSet = new Set();
+        let fullCatalogSet = new Set();
 
         try {
             firebase.initializeApp(firebaseConfig);
@@ -337,19 +338,19 @@
             invoicesRef = db.ref('invoices');
             productsRef = db.ref('products');
 
-            // Listen to Dynamic Product Catalog
+            // 1. Listen to Dynamic Product Catalog Node from Firebase
             productsRef.on('value', (snapshot) => {
                 const data = snapshot.val();
-                catalogSet.clear();
+                dbCatalogSet.clear();
                 if (data) {
                     Object.values(data).forEach(pName => {
-                        if (pName) catalogSet.add(pName.toString().trim());
+                        if (pName) dbCatalogSet.add(pName.toString().trim());
                     });
                 }
-                updateDatalist();
+                rebuildProductCatalog();
             });
 
-            // Listen to Invoices
+            // 2. Listen to Invoices & Automatically Extract Product Names
             invoicesRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 invoicesList = [];
@@ -365,18 +366,40 @@
 
                 updateDashboardStats();
                 renderHistoryTable();
+                rebuildProductCatalog();
             });
         } catch (error) {
             console.error("Firebase Config Error:", error);
             alert("Firebase connection error: " + error.message);
         }
 
-        function updateDatalist() {
+        // Rebuild catalog combining Database Catalog + All Invoices Products
+        function rebuildProductCatalog() {
+            fullCatalogSet = new Set(dbCatalogSet);
+
+            // Add all items found in saved invoices
+            invoicesList.forEach(inv => {
+                if (inv.items && Array.isArray(inv.items)) {
+                    inv.items.forEach(i => {
+                        if (i.product) fullCatalogSet.add(i.product.toString().trim());
+                    });
+                } else if (inv.product) {
+                    fullCatalogSet.add(inv.product.toString().trim());
+                }
+            });
+
+            updateDatalistUI();
+        }
+
+        // Render Datalist Options for Mobile & Desktop Web
+        function updateDatalistUI() {
             const datalist = document.getElementById('productCatalogList');
             if (!datalist) return;
-            datalist.innerHTML = Array.from(catalogSet)
-                .sort()
-                .map(item => `<option value="${item}"></option>`)
+
+            const sortedList = Array.from(fullCatalogSet).filter(Boolean).sort();
+            
+            datalist.innerHTML = sortedList
+                .map(item => `<option value="${item}">${item}</option>`)
                 .join('');
         }
 
@@ -386,7 +409,7 @@
             rowDiv.className = "product-row grid grid-cols-12 gap-2 items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80";
             rowDiv.innerHTML = `
                 <div class="col-span-7 sm:col-span-8">
-                    <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" required>
+                    <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" autocomplete="off" required>
                 </div>
                 <div class="col-span-3 sm:col-span-3">
                     <input type="number" min="1" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="Qty" required>
@@ -434,9 +457,11 @@
                 const qty = parseInt(row.querySelector('.product-qty').value) || 0;
                 if (name && qty > 0) {
                     items.push({ product: name, quantity: qty });
-                    // If product is not in catalog, dynamically push to Firebase catalog
-                    if (!catalogSet.has(name)) {
+                    
+                    // Push newly entered products to Firebase catalog automatically
+                    if (!fullCatalogSet.has(name) && productsRef) {
                         productsRef.push(name);
+                        fullCatalogSet.add(name);
                     }
                 }
             });
@@ -467,7 +492,7 @@
                     container.innerHTML = `
                         <div class="product-row grid grid-cols-12 gap-2 items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
                             <div class="col-span-7 sm:col-span-8">
-                                <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" required>
+                                <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" autocomplete="off" required>
                             </div>
                             <div class="col-span-3 sm:col-span-3">
                                 <input type="number" min="1" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="Qty" required>
