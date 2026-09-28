@@ -103,6 +103,9 @@
 </head>
 <body class="text-slate-100 antialiased min-h-screen flex flex-col pb-20 md:pb-6">
 
+    <!-- Global Dynamic Datalist for Product Auto-Suggestion -->
+    <datalist id="productCatalogList"></datalist>
+
     <!-- Header Section -->
     <header class="glass-header border-b border-slate-800 sticky top-0 z-30 shadow-lg no-print">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -229,11 +232,11 @@
                     </div>
                 </div>
 
-                <!-- Invoice Inputs -->
+                <!-- Invoice Inputs (Invoice Number is OPTIONAL) -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Invoice / Challan No <span class="text-red-400">*</span></label>
-                        <input type="text" id="invoiceNumber" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="e.g. INV-2026-001">
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Invoice / Challan No <span class="text-slate-500 text-[10px]">(Optional)</span></label>
+                        <input type="text" id="invoiceNumber" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="e.g. INV-2026-001 (Optional)">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Date <span class="text-red-400">*</span></label>
@@ -241,16 +244,33 @@
                     </div>
                 </div>
 
-                <!-- Product Entry -->
-                <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div class="sm:col-span-2">
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Product Name <span class="text-red-400">*</span></label>
-                        <input type="text" id="productName" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Enter product description">
+                <!-- Dynamic Multiple Product Rows Container -->
+                <div class="space-y-3">
+                    <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Product Items</label>
+                    <div id="productRowsContainer" class="space-y-2.5">
+                        <!-- Initial Row -->
+                        <div class="product-row grid grid-cols-12 gap-2 items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
+                            <div class="col-span-7 sm:col-span-8">
+                                <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" required>
+                            </div>
+                            <div class="col-span-3 sm:col-span-3">
+                                <input type="number" min="1" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="Qty" required>
+                            </div>
+                            <div class="col-span-2 sm:col-span-1 text-right">
+                                <button type="button" onclick="removeProductRow(this)" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 flex items-center justify-center transition text-xs mx-auto">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Quantity <span class="text-red-400">*</span></label>
-                        <input type="number" id="productQty" min="1" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="0">
-                    </div>
+                </div>
+
+                <!-- Add Product Button (Positioned Right Above Save & Sync) -->
+                <div class="pt-1">
+                    <button type="button" onclick="addProductRow()" class="w-full py-2.5 bg-slate-800/80 hover:bg-slate-800 text-brand-400 border border-brand-500/30 rounded-xl font-semibold text-xs transition flex items-center justify-center space-x-2">
+                        <i class="fa-solid fa-plus text-xs"></i>
+                        <span>Product jukto korun (+ Add Product)</span>
+                    </button>
                 </div>
 
                 <!-- Submit Button -->
@@ -276,8 +296,8 @@
                             <th class="p-2.5">Date</th>
                             <th class="p-2.5">Type</th>
                             <th class="p-2.5">Invoice #</th>
-                            <th class="p-2.5">Product</th>
-                            <th class="p-2.5 text-right">Qty</th>
+                            <th class="p-2.5">Products & Qty</th>
+                            <th class="p-2.5 text-right">Total Qty</th>
                             <th class="p-2.5 text-center no-print">Action</th>
                         </tr>
                     </thead>
@@ -294,26 +314,42 @@
 
     <!-- Firebase Logic -->
     <script>
-        // Exact Firebase Config from your screenshot
         const firebaseConfig = {
-            apiKey: "AIzaSyC1CasMqkv7_OqLZmWe-UC4eeA6ShP9pLk",
-            authDomain: "warehouse-tracker-c8437.firebaseapp.com",
-            databaseURL: "https://warehouse-tracker-c8437-default-rtdb.asia-southeast1.firebasedatabase.app",
-            projectId: "warehouse-tracker-c8437",
-            storageBucket: "warehouse-tracker-c8437.firebasestorage.app",
+            apiKey: "AIzaSyClCasMqkv7_OqLZmWe-UC4eeA6ShP9pLk",
+            authDomain: "warehouse-tracker-c0437.firebaseapp.com",
+            databaseURL: "https://warehouse-tracker-c0437-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "warehouse-tracker-c0437",
+            storageBucket: "warehouse-tracker-c0437.firebasestorage.app",
             messagingSenderId: "449706967433",
-            appId: "1:449706967433:web:96c14f7a9b19fd2b792158"
+            appId: "1:449706967433:web:96c14f7e9b19fd2b792158",
+            measurementId: "G-MHVJQ27PGH"
         };
 
         let db = null;
         let invoicesRef = null;
+        let productsRef = null;
         let invoicesList = [];
+        let catalogSet = new Set();
 
         try {
             firebase.initializeApp(firebaseConfig);
             db = firebase.database();
             invoicesRef = db.ref('invoices');
+            productsRef = db.ref('products');
 
+            // Listen to Dynamic Product Catalog
+            productsRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                catalogSet.clear();
+                if (data) {
+                    Object.values(data).forEach(pName => {
+                        if (pName) catalogSet.add(pName.toString().trim());
+                    });
+                }
+                updateDatalist();
+            });
+
+            // Listen to Invoices
             invoicesRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 invoicesList = [];
@@ -335,6 +371,44 @@
             alert("Firebase connection error: " + error.message);
         }
 
+        function updateDatalist() {
+            const datalist = document.getElementById('productCatalogList');
+            if (!datalist) return;
+            datalist.innerHTML = Array.from(catalogSet)
+                .sort()
+                .map(item => `<option value="${item}"></option>`)
+                .join('');
+        }
+
+        function addProductRow() {
+            const container = document.getElementById('productRowsContainer');
+            const rowDiv = document.createElement('div');
+            rowDiv.className = "product-row grid grid-cols-12 gap-2 items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80";
+            rowDiv.innerHTML = `
+                <div class="col-span-7 sm:col-span-8">
+                    <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" required>
+                </div>
+                <div class="col-span-3 sm:col-span-3">
+                    <input type="number" min="1" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="Qty" required>
+                </div>
+                <div class="col-span-2 sm:col-span-1 text-right">
+                    <button type="button" onclick="removeProductRow(this)" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 flex items-center justify-center transition text-xs mx-auto">
+                        <i class="fa-solid fa-trash-can"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(rowDiv);
+        }
+
+        function removeProductRow(button) {
+            const container = document.getElementById('productRowsContainer');
+            if (container.children.length > 1) {
+                button.closest('.product-row').remove();
+            } else {
+                alert("At least one product item is required!");
+            }
+        }
+
         function saveInvoiceRecord(event) {
             event.preventDefault();
 
@@ -350,15 +424,35 @@
             const entryType = document.querySelector('input[name="entryType"]:checked').value;
             const invoiceNumber = document.getElementById('invoiceNumber').value.trim();
             const invoiceDate = document.getElementById('invoiceDate').value;
-            const productName = document.getElementById('productName').value.trim();
-            const productQty = parseInt(document.getElementById('productQty').value) || 0;
+
+            // Collect all product rows
+            const rowElements = document.querySelectorAll('.product-row');
+            const items = [];
+
+            rowElements.forEach(row => {
+                const name = row.querySelector('.product-name').value.trim();
+                const qty = parseInt(row.querySelector('.product-qty').value) || 0;
+                if (name && qty > 0) {
+                    items.push({ product: name, quantity: qty });
+                    // If product is not in catalog, dynamically push to Firebase catalog
+                    if (!catalogSet.has(name)) {
+                        productsRef.push(name);
+                    }
+                }
+            });
+
+            if (items.length === 0) {
+                alert("Please add at least one valid product with quantity!");
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = `<i class="fa-solid fa-floppy-disk text-sm"></i><span>Save & Sync Across Devices</span>`;
+                return;
+            }
 
             const newRecord = {
                 type: entryType,
-                number: invoiceNumber,
+                number: invoiceNumber || 'N/A',
                 date: invoiceDate,
-                product: productName,
-                quantity: productQty,
+                items: items,
                 timestamp: Date.now()
             };
 
@@ -367,6 +461,24 @@
                     alert("Saved & synced successfully!");
                     document.getElementById('invoiceForm').reset();
                     document.getElementById('invoiceDate').valueAsDate = new Date();
+                    
+                    // Reset product rows to single empty row
+                    const container = document.getElementById('productRowsContainer');
+                    container.innerHTML = `
+                        <div class="product-row grid grid-cols-12 gap-2 items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
+                            <div class="col-span-7 sm:col-span-8">
+                                <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" required>
+                            </div>
+                            <div class="col-span-3 sm:col-span-3">
+                                <input type="number" min="1" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="Qty" required>
+                            </div>
+                            <div class="col-span-2 sm:col-span-1 text-right">
+                                <button type="button" onclick="removeProductRow(this)" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 flex items-center justify-center transition text-xs mx-auto">
+                                    <i class="fa-solid fa-trash-can"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
                 })
                 .catch((err) => {
                     alert("Error: " + err.message);
@@ -382,8 +494,16 @@
             let outboundTotal = 0;
 
             invoicesList.forEach(inv => {
-                if (inv.type === 'inbound') inboundTotal += Number(inv.quantity);
-                if (inv.type === 'outbound') outboundTotal += Number(inv.quantity);
+                if (inv.items && Array.isArray(inv.items)) {
+                    inv.items.forEach(item => {
+                        if (inv.type === 'inbound') inboundTotal += Number(item.quantity || 0);
+                        if (inv.type === 'outbound') outboundTotal += Number(item.quantity || 0);
+                    });
+                } else if (inv.quantity) {
+                    // Backward compatibility for single product format
+                    if (inv.type === 'inbound') inboundTotal += Number(inv.quantity);
+                    if (inv.type === 'outbound') outboundTotal += Number(inv.quantity);
+                }
             });
 
             document.getElementById('statInboundCount').innerText = inboundTotal;
@@ -403,24 +523,38 @@
 
             const sorted = [...invoicesList].reverse();
 
-            tbody.innerHTML = sorted.map(inv => `
-                <tr class="border-b border-slate-800">
-                    <td class="p-2.5 font-mono text-slate-400">${inv.date || '-'}</td>
-                    <td class="p-2.5">
-                        <span class="px-2 py-0.5 rounded text-[10px] font-bold ${inv.type === 'inbound' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}">
-                            ${inv.type === 'inbound' ? 'IN' : 'OUT'}
-                        </span>
-                    </td>
-                    <td class="p-2.5 font-mono font-semibold text-white">${inv.number}</td>
-                    <td class="p-2.5 text-slate-200">${inv.product}</td>
-                    <td class="p-2.5 text-right font-mono font-bold ${inv.type === 'inbound' ? 'text-emerald-400' : 'text-amber-400'}">${inv.quantity}</td>
-                    <td class="p-2.5 text-center no-print">
-                        <button onclick="deleteRecord('${inv.id}')" class="text-red-400 hover:text-red-300 p-1">
-                            <i class="fa-solid fa-trash"></i>
-                        </button>
-                    </td>
-                </tr>
-            `).join('');
+            tbody.innerHTML = sorted.map(inv => {
+                let itemsSummary = '';
+                let totalQty = 0;
+
+                if (inv.items && Array.isArray(inv.items)) {
+                    itemsSummary = inv.items.map(i => `<div class="py-0.5"><span class="text-white font-medium">${i.product}</span> <span class="text-slate-400 font-mono">(${i.quantity})</span></div>`).join('');
+                    totalQty = inv.items.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
+                } else {
+                    // Fallback for single item format
+                    itemsSummary = `<span class="text-white font-medium">${inv.product}</span> <span class="text-slate-400 font-mono">(${inv.quantity})</span>`;
+                    totalQty = Number(inv.quantity || 0);
+                }
+
+                return `
+                    <tr class="border-b border-slate-800">
+                        <td class="p-2.5 font-mono text-slate-400 align-top">${inv.date || '-'}</td>
+                        <td class="p-2.5 align-top">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${inv.type === 'inbound' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}">
+                                ${inv.type === 'inbound' ? 'IN' : 'OUT'}
+                            </span>
+                        </td>
+                        <td class="p-2.5 font-mono font-semibold text-white align-top">${inv.number || 'N/A'}</td>
+                        <td class="p-2.5 text-slate-200 align-top">${itemsSummary}</td>
+                        <td class="p-2.5 text-right font-mono font-bold align-top ${inv.type === 'inbound' ? 'text-emerald-400' : 'text-amber-400'}">${totalQty}</td>
+                        <td class="p-2.5 text-center no-print align-top">
+                            <button onclick="deleteRecord('${inv.id}')" class="text-red-400 hover:text-red-300 p-1">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
         }
 
         function deleteRecord(id) {
@@ -454,9 +588,17 @@
                 return;
             }
             let csvContent = "data:text/csv;charset=utf-8,Date,Type,Invoice Number,Product Name,Quantity\n";
+            
             invoicesList.forEach(row => {
-                csvContent += `${row.date},${row.type},${row.number},${row.product},${row.quantity}\n`;
+                if (row.items && Array.isArray(row.items)) {
+                    row.items.forEach(item => {
+                        csvContent += `${row.date},${row.type},${row.number},"${item.product}",${item.quantity}\n`;
+                    });
+                } else {
+                    csvContent += `${row.date},${row.type},${row.number},"${row.product}",${row.quantity}\n`;
+                }
             });
+
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
