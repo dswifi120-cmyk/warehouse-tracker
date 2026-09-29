@@ -9,8 +9,9 @@
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Warehouse Tracker">
+    <meta name="apple-mobile-web-app-title" content="Warehouse App">
     <meta name="theme-color" content="#080c14">
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3652/3652191.png">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -112,7 +113,7 @@
             <div class="flex justify-between items-center h-16">
                 <div class="flex items-center space-x-3">
                     <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-brand-500/20">
-                        <i class="fa-solid fa-cloud-arrow-up text-lg"></i>
+                        <i class="fa-solid fa-boxes-packing text-lg"></i>
                     </div>
                     <div>
                         <h1 class="text-base font-bold text-white leading-tight tracking-tight flex items-center">
@@ -127,6 +128,12 @@
                 </div>
 
                 <div class="flex items-center space-x-2 sm:space-x-3">
+                    <!-- PWA Install Button (Auto-shows when browser triggers event) -->
+                    <button id="installPwaBtn" onclick="installPWA()" class="hidden inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-xl text-slate-950 bg-gradient-to-r from-emerald-400 to-brand-400 hover:from-emerald-300 hover:to-brand-300 transition shadow-lg shadow-emerald-500/20 animate-bounce">
+                        <i class="fa-solid fa-download mr-1.5"></i>
+                        <span>Install App</span>
+                    </button>
+
                     <button onclick="window.print()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
                         <i class="fa-solid fa-print text-brand-400 mr-1.5"></i>
                         <span class="hidden sm:inline">Print / PDF</span>
@@ -237,11 +244,11 @@
                     </div>
                 </div>
 
-                <!-- Invoice Inputs (Invoice Number is OPTIONAL) -->
+                <!-- Invoice Inputs -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Invoice / Challan No <span class="text-slate-500 text-[10px]">(Optional)</span></label>
-                        <input type="text" id="invoiceNumber" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="e.g. INV-2026-001 (Optional)">
+                        <input type="text" id="invoiceNumber" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="e.g. INV-2026-001">
                     </div>
                     <div>
                         <label class="block text-xs font-medium text-slate-400 mb-1">Date <span class="text-red-400">*</span></label>
@@ -317,9 +324,72 @@
 
     </main>
 
+    <!-- PWA Auto Injector Script -->
+    <script>
+        // Inline Dynamic Manifest Injection
+        const manifestObj = {
+            "name": "Warehouse Invoice Manager",
+            "short_name": "WarehouseApp",
+            "start_url": "./",
+            "display": "standalone",
+            "background_color": "#080c14",
+            "theme_color": "#080c14",
+            "icons": [
+                {
+                    "src": "https://cdn-icons-png.flaticon.com/512/3652/3652191.png",
+                    "sizes": "192x192",
+                    "type": "image/png"
+                },
+                {
+                    "src": "https://cdn-icons-png.flaticon.com/512/3652/3652191.png",
+                    "sizes": "512x512",
+                    "type": "image/png"
+                }
+            ]
+        };
+        const manifestBlob = new Blob([JSON.stringify(manifestObj)], {type: 'application/json'});
+        const manifestURL = URL.createObjectURL(manifestBlob);
+        const manifestLink = document.createElement('link');
+        manifestLink.rel = 'manifest';
+        manifestLink.href = manifestURL;
+        document.head.appendChild(manifestLink);
+
+        // Register Inline Service Worker
+        if ('serviceWorker' in navigator) {
+            const swCode = `
+                self.addEventListener('install', e => self.skipWaiting());
+                self.addEventListener('activate', e => e.waitUntil(clients.claim()));
+                self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
+            `;
+            const swBlob = new Blob([swCode], { type: 'text/javascript' });
+            const swUrl = URL.createObjectURL(swBlob);
+            navigator.serviceWorker.register(swUrl).catch(err => console.log('SW Note:', err));
+        }
+
+        // PWA Install Prompt Listener
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            const btn = document.getElementById('installPwaBtn');
+            if (btn) btn.classList.remove('hidden');
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        document.getElementById('installPwaBtn').classList.add('hidden');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+    </script>
+
     <!-- Firebase Logic & Application Code -->
     <script>
-        // Master hardcoded list provided by user
         const initialProductsList = [
             "Pegasus 15 SC — 50 ml", "Amistar Top — 500 ml", "Amistar Top — 50 ml", "Mortar 48 EC — 50 ml", 
             "Ridomil Gold MZ 68 WG — 500 gm", "Splender / Splendor 80 WDG — 100 gm", "Splender / Splendor 80 WDG — 50 gm", 
@@ -366,8 +436,8 @@
             "Sponge Gourd Hair 723 — 5 gm", "Eggplant Momo Plus — 5 gm", "Sponge Gourd Green Wood 721 — 5 gm", 
             "Cucumber Winter Fresh 555 — 5 gm", "Indian Spinach Lal Pusti — 500 gm", "Abatin 1.8 EC — 50 ml", "Abatin 1.8 EC — 100 ml", 
             "Abatin 1.8 EC — 400 ml", "Abatin 1.8 EC — 1 Liter", "Adclop 20 SL — 25 ml", "Adclop 20 SL — 100 ml", "Adclop 20 SL — 400 ml", 
-            "Marker 2.5 EC — 50 ml", "Mortar 48 EC — 100 ml", "Mortar 48 EC — 250 ml", "Mortar 48 EC — 400 ml", "Cartaprid 95 SP — 10g", 
-            "Cartaprid 95 SP — 50g", "Starter 40 EC — 50 ml", "Dominator 20 SC — 25 ml", "Dominator 20 SC — 100 ml", "Maxpro 40 WDG — 30g", 
+            "Marker 2.5 EC — 50 ml", "Mortar 48 EC — 100 ml", "Mortar 48 EC — 250 ml", "Mortar 48 EC — 400 ml", "Cartapid 95 SP — 10g", 
+            "Cartapid 95 SP — 50g", "Starter 40 EC — 50 ml", "Dominator 20 SC — 25 ml", "Dominator 20 SC — 100 ml", "Maxpro 40 WDG — 30g", 
             "Fenzate 25 EC — 25 ml", "Fenzate 25 EC — 50 ml", "Fenzate 25 EC — 100 ml", "Fenzate 25 EC — 400 ml", "Antiborer 40 WDG — 10g", 
             "Antiborer 40 WDG — 30g", "Topgate 57.5 WDG — 30g", "Grip 52.5 WDG — 50g", "Grip 52.5 WDG — 100g", "Bendazim 50 WP — 50g", 
             "Combi-2 30 EC — 100ml", "Combi-2 30 EC — 400ml", "Fulimain 60 WP — 100g", "Aiker 20 SL — 50ml", "Nacsumin 54 WP — 25g", 
@@ -398,7 +468,7 @@
         let productsRef = null;
         let invoicesList = [];
         let dbCatalogSet = new Set();
-        let fullCatalogSet = new Set(initialProductsList); // Pre-populated
+        let fullCatalogSet = new Set(initialProductsList);
         let editingInvoiceId = null;
 
         try {
@@ -407,7 +477,6 @@
             invoicesRef = db.ref('invoices');
             productsRef = db.ref('products');
 
-            // 1. Listen to Dynamic Products Node from Firebase
             productsRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 dbCatalogSet.clear();
@@ -419,57 +488,39 @@
                 rebuildProductCatalog();
             });
 
-            // 2. Listen to Invoices & Automatically Sync Catalog + History
             invoicesRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 invoicesList = [];
-                
                 if (data) {
                     Object.keys(data).forEach(key => {
-                        invoicesList.push({
-                            id: key,
-                            ...data[key]
-                        });
+                        invoicesList.push({ id: key, ...data[key] });
                     });
                 }
-
                 updateDashboardStats();
                 renderHistoryTable();
                 rebuildProductCatalog();
             });
         } catch (error) {
             console.error("Firebase Config Error:", error);
-            alert("Firebase connection error: " + error.message);
         }
 
-        // Rebuild full merged catalog
         function rebuildProductCatalog() {
             fullCatalogSet = new Set([...initialProductsList, ...dbCatalogSet]);
-
-            // Combine with products from saved invoices
             invoicesList.forEach(inv => {
                 if (inv.items && Array.isArray(inv.items)) {
-                    inv.items.forEach(i => {
-                        if (i.product) fullCatalogSet.add(i.product.toString().trim());
-                    });
+                    inv.items.forEach(i => { if (i.product) fullCatalogSet.add(i.product.toString().trim()); });
                 } else if (inv.product) {
                     fullCatalogSet.add(inv.product.toString().trim());
                 }
             });
-
             updateDatalistUI();
         }
 
-        // Populate Datalist HTML Options
         function updateDatalistUI() {
             const datalist = document.getElementById('productCatalogList');
             if (!datalist) return;
-
             const sortedList = Array.from(fullCatalogSet).filter(Boolean).sort();
-            
-            datalist.innerHTML = sortedList
-                .map(item => `<option value="${item}">${item}</option>`)
-                .join('');
+            datalist.innerHTML = sortedList.map(item => `<option value="${item}">${item}</option>`).join('');
         }
 
         function addProductRow(productVal = '', qtyVal = '') {
@@ -503,21 +554,15 @@
 
         function saveInvoiceRecord(event) {
             event.preventDefault();
-
-            if (!invoicesRef) {
-                alert("Firebase database connection failed!");
-                return;
-            }
+            if (!invoicesRef) return;
 
             const submitBtn = document.getElementById('submitBtn');
             submitBtn.disabled = true;
-            submitBtn.innerText = editingInvoiceId ? "Updating..." : "Saving...";
 
             const entryType = document.querySelector('input[name="entryType"]:checked').value;
             const invoiceNumber = document.getElementById('invoiceNumber').value.trim();
             const invoiceDate = document.getElementById('invoiceDate').value;
 
-            // Collect all product rows
             const rowElements = document.querySelectorAll('.product-row');
             const items = [];
 
@@ -526,8 +571,6 @@
                 const qty = parseInt(row.querySelector('.product-qty').value) || 0;
                 if (name && qty > 0) {
                     items.push({ product: name, quantity: qty });
-                    
-                    // Push newly entered products to Firebase catalog
                     if (!fullCatalogSet.has(name) && productsRef) {
                         productsRef.push(name);
                         fullCatalogSet.add(name);
@@ -536,9 +579,8 @@
             });
 
             if (items.length === 0) {
-                alert("Please add at least one valid product with quantity!");
+                alert("Please add at least one valid product!");
                 submitBtn.disabled = false;
-                resetSubmitButton();
                 return;
             }
 
@@ -554,17 +596,12 @@
                 ? invoicesRef.child(editingInvoiceId).set(recordData)
                 : invoicesRef.push(recordData);
 
-            savePromise
-                .then(() => {
-                    alert(editingInvoiceId ? "Invoice updated & synced successfully!" : "Saved & synced successfully!");
-                    cancelEditing();
-                })
-                .catch((err) => {
-                    alert("Error: " + err.message);
-                })
-                .finally(() => {
-                    submitBtn.disabled = false;
-                });
+            savePromise.then(() => {
+                alert("Saved & synced successfully!");
+                cancelEditing();
+            }).finally(() => {
+                submitBtn.disabled = false;
+            });
         }
 
         function editRecord(id) {
@@ -572,35 +609,19 @@
             if (!inv) return;
 
             editingInvoiceId = id;
-
-            // Populate Entry Type
             const radio = document.querySelector(`input[name="entryType"][value="${inv.type}"]`);
             if (radio) radio.checked = true;
 
-            // Populate Invoice Number & Date
             document.getElementById('invoiceNumber').value = (inv.number === 'N/A') ? '' : inv.number;
             document.getElementById('invoiceDate').value = inv.date || new Date().toISOString().slice(0, 10);
 
-            // Populate Products
             const container = document.getElementById('productRowsContainer');
             container.innerHTML = '';
+            const items = (inv.items && Array.isArray(inv.items)) ? inv.items : [{ product: inv.product || '', quantity: inv.quantity || 1 }];
+            items.forEach(i => addProductRow(i.product, i.quantity));
 
-            const items = (inv.items && Array.isArray(inv.items)) 
-                ? inv.items 
-                : [{ product: inv.product || '', quantity: inv.quantity || 1 }];
-
-            items.forEach(i => {
-                addProductRow(i.product, i.quantity);
-            });
-
-            // UI Adjustments for Edit Mode
             document.getElementById('formHeaderTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-400 mr-2"></i>Edit Invoice Entry`;
             document.getElementById('cancelEditBtn').classList.remove('hidden');
-
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.className = "w-full py-3 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-amber-500/20 transition flex items-center justify-center space-x-2";
-            submitBtn.innerHTML = `<i class="fa-solid fa-check text-sm"></i><span>Update Invoice Entry</span>`;
-
             switchTab('scan');
         }
 
@@ -608,39 +629,22 @@
             editingInvoiceId = null;
             document.getElementById('invoiceForm').reset();
             document.getElementById('invoiceDate').valueAsDate = new Date();
-            
             document.getElementById('formHeaderTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-400 mr-2"></i>Invoice Entry Form`;
             document.getElementById('cancelEditBtn').classList.add('hidden');
-
-            const container = document.getElementById('productRowsContainer');
-            container.innerHTML = '';
+            document.getElementById('productRowsContainer').innerHTML = '';
             addProductRow();
-
-            resetSubmitButton();
-        }
-
-        function resetSubmitButton() {
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.className = "w-full py-3 bg-gradient-to-r from-brand-600 to-emerald-500 hover:from-brand-500 hover:to-emerald-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-brand-500/20 transition flex items-center justify-center space-x-2";
-            submitBtn.innerHTML = `<i class="fa-solid fa-floppy-disk text-sm"></i><span>Save & Sync Across Devices</span>`;
         }
 
         function updateDashboardStats() {
-            let inboundTotal = 0;
-            let outboundTotal = 0;
-
+            let inboundTotal = 0, outboundTotal = 0;
             invoicesList.forEach(inv => {
                 if (inv.items && Array.isArray(inv.items)) {
                     inv.items.forEach(item => {
                         if (inv.type === 'inbound') inboundTotal += Number(item.quantity || 0);
                         if (inv.type === 'outbound') outboundTotal += Number(item.quantity || 0);
                     });
-                } else if (inv.quantity) {
-                    if (inv.type === 'inbound') inboundTotal += Number(inv.quantity);
-                    if (inv.type === 'outbound') outboundTotal += Number(inv.quantity);
                 }
             });
-
             document.getElementById('statInboundCount').innerText = inboundTotal;
             document.getElementById('statOutboundCount').innerText = outboundTotal;
             document.getElementById('statNetStockCount').innerText = inboundTotal - outboundTotal;
@@ -650,26 +654,16 @@
         function renderHistoryTable() {
             const tbody = document.getElementById('historyTableBody');
             if (!tbody) return;
-
             if (invoicesList.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500">No records found</td></tr>`;
                 return;
             }
-
-            const sorted = [...invoicesList].reverse();
-
-            tbody.innerHTML = sorted.map(inv => {
-                let itemsSummary = '';
-                let totalQty = 0;
-
+            tbody.innerHTML = [...invoicesList].reverse().map(inv => {
+                let itemsSummary = '', totalQty = 0;
                 if (inv.items && Array.isArray(inv.items)) {
                     itemsSummary = inv.items.map(i => `<div class="py-0.5"><span class="text-white font-medium">${i.product}</span> <span class="text-slate-400 font-mono">(${i.quantity})</span></div>`).join('');
                     totalQty = inv.items.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
-                } else {
-                    itemsSummary = `<span class="text-white font-medium">${inv.product}</span> <span class="text-slate-400 font-mono">(${inv.quantity})</span>`;
-                    totalQty = Number(inv.quantity || 0);
                 }
-
                 return `
                     <tr class="border-b border-slate-800">
                         <td class="p-2.5 font-mono text-slate-400 align-top">${inv.date || '-'}</td>
@@ -682,12 +676,8 @@
                         <td class="p-2.5 text-slate-200 align-top">${itemsSummary}</td>
                         <td class="p-2.5 text-right font-mono font-bold align-top ${inv.type === 'inbound' ? 'text-emerald-400' : 'text-amber-400'}">${totalQty}</td>
                         <td class="p-2.5 text-center no-print align-top space-x-1">
-                            <button onclick="editRecord('${inv.id}')" class="text-amber-400 hover:text-amber-300 p-1" title="Edit Invoice">
-                                <i class="fa-solid fa-pen-to-square"></i>
-                            </button>
-                            <button onclick="deleteRecord('${inv.id}')" class="text-red-400 hover:text-red-300 p-1" title="Delete Invoice">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
+                            <button onclick="editRecord('${inv.id}')" class="text-amber-400 hover:text-amber-300 p-1"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteRecord('${inv.id}')" class="text-red-400 hover:text-red-300 p-1"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     </tr>
                 `;
@@ -695,50 +685,28 @@
         }
 
         function deleteRecord(id) {
-            if (confirm("Are you sure you want to delete this invoice?")) {
-                db.ref('invoices/' + id).remove();
-            }
+            if (confirm("Delete this invoice?")) db.ref('invoices/' + id).remove();
         }
 
         function switchTab(tabName) {
             const scanView = document.getElementById('tabScanView');
             const historyView = document.getElementById('tabHistoryView');
-            const tabScanBtn = document.getElementById('tabScanBtn');
-            const tabHistoryBtn = document.getElementById('tabHistoryBtn');
-
             if (tabName === 'scan') {
                 scanView.classList.remove('hidden');
                 historyView.classList.add('hidden');
-                tabScanBtn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 bg-brand-500/20 text-brand-400 border border-brand-500/40";
-                tabHistoryBtn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-800/50";
             } else {
                 scanView.classList.add('hidden');
                 historyView.classList.remove('hidden');
-                tabHistoryBtn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 bg-brand-500/20 text-brand-400 border border-brand-500/40";
-                tabScanBtn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-800/50";
             }
         }
 
         function exportToCSV() {
-            if (invoicesList.length === 0) {
-                alert("No data available to export!");
-                return;
-            }
             let csvContent = "data:text/csv;charset=utf-8,Date,Type,Invoice Number,Product Name,Quantity\n";
-            
             invoicesList.forEach(row => {
-                if (row.items && Array.isArray(row.items)) {
-                    row.items.forEach(item => {
-                        csvContent += `${row.date},${row.type},${row.number},"${item.product}",${item.quantity}\n`;
-                    });
-                } else {
-                    csvContent += `${row.date},${row.type},${row.number},"${row.product}",${row.quantity}\n`;
-                }
+                if (row.items) row.items.forEach(item => csvContent += `${row.date},${row.type},${row.number},"${item.product}",${item.quantity}\n`);
             });
-
-            const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
+            link.setAttribute("href", encodeURI(csvContent));
             link.setAttribute("download", `warehouse_stock_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(link);
             link.click();
@@ -746,8 +714,7 @@
         }
 
         document.addEventListener("DOMContentLoaded", () => {
-            const dateInput = document.getElementById('invoiceDate');
-            if (dateInput) dateInput.valueAsDate = new Date();
+            document.getElementById('invoiceDate').valueAsDate = new Date();
             rebuildProductCatalog();
         });
     </script>
