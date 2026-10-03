@@ -369,7 +369,7 @@
                     <i class="fa-solid fa-lock"></i>
                 </div>
                 <h3 class="font-bold text-white text-base">Admin Security Lock</h3>
-                <p class="text-xs text-slate-400">Stock view dekhar jonno Admin Password din</p>
+                <p class="text-xs text-slate-400">Enter Admin Password</p>
             </div>
             <input type="password" id="adminPasswordInput" placeholder="Enter password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400 text-center font-mono">
             <div class="flex space-x-2">
@@ -434,7 +434,7 @@
 
     <!-- Firebase Logic & Main Application Code -->
     <script>
-        const ADMIN_PASSWORD = "admin123"; // CHANGE YOUR ADMIN PASSWORD HERE
+        const ADMIN_PASSWORD = "akm"; // CHANGE YOUR ADMIN PASSWORD HERE
         let isAdminUnlocked = false;
 
         const initialProductsList = [
@@ -617,7 +617,7 @@
 
             const selectedType = document.querySelector('input[name="entryType"]:checked');
             if (!selectedType) {
-                alert("Doya kare Inbound athoba Outbound select korun!");
+                alert("Doya kore Inbound othoba Outbound select korun!");
                 return;
             }
 
