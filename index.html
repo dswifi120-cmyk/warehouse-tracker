@@ -17,7 +17,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts: Inter & Hind Siliguri -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
@@ -228,7 +228,7 @@
                     </div>
                 </div>
 
-                <!-- Entry Type Selector (Required Selection, No Default Check) -->
+                <!-- Entry Type Selector -->
                 <div class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
                     <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider px-1">
                         Select Entry Type <span class="text-red-400">*</span>
@@ -264,7 +264,7 @@
                     </div>
                 </div>
 
-                <!-- Dynamic Multiple Product Rows Container -->
+                <!-- Product Rows Container -->
                 <div class="space-y-3">
                     <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Product Items</label>
                     <div id="productRowsContainer" class="space-y-2.5">
@@ -464,7 +464,7 @@
         }
     </script>
 
-    <!-- Firebase Logic & Complete Application Script -->
+    <!-- Firebase Logic & Application Script -->
     <script>
         const initialProductsList = [
             "Pegasus 15 SC — 50 ml", "Amistar Top — 500 ml", "Amistar Top — 50 ml", "Mortar 48 EC — 50 ml", 
@@ -539,7 +539,7 @@
             measurementId: "G-MHVJQ27PGH"
         };
 
-        const ADMIN_PIN = "1234"; // Default Password for Admin View
+        const ADMIN_PIN = "1234";
 
         let db = null;
         let invoicesRef = null;
@@ -597,9 +597,10 @@
             fullCatalogSet = new Set([...initialProductsList, ...dbCatalogSet]);
             invoicesList.forEach(inv => {
                 if (inv.items && Array.isArray(inv.items)) {
-                    inv.items.forEach(i => { if (i.product) fullCatalogSet.add(i.product.toString().trim()); });
-                } else if (inv.product) {
-                    fullCatalogSet.add(inv.product.toString().trim());
+                    inv.items.forEach(i => { if (i && i.product) fullCatalogSet.add(i.product.toString().trim()); });
+                } else if (inv.product || inv.productName) {
+                    const pName = inv.product || inv.productName;
+                    if (pName) fullCatalogSet.add(pName.toString().trim());
                 }
             });
             updateDatalistUI();
@@ -656,7 +657,7 @@
             if (rows.length > 1) {
                 btn.closest('.product-row').remove();
             } else {
-                alert("কমপক্ষে ১ টি প্রোডাক্ট এন্ট্রি রাখতে হবে।");
+                alert("Kompokkhe 1 ti product entry rakhte hobe.");
             }
         }
 
@@ -665,7 +666,7 @@
             
             const selectedType = document.querySelector('input[name="entryType"]:checked');
             if (!selectedType) {
-                alert("অনুগ্রহ করে Entry Type (Inbound অথবা Outbound) সিলেক্ট করুন।");
+                alert("Anugroho kore Entry Type (Inbound athoba Outbound) select korun.");
                 return;
             }
             const entryType = selectedType.value;
@@ -683,7 +684,6 @@
                 if (name && qty > 0) {
                     items.push({ product: name, qty: qty });
                     totalQty += qty;
-                    // Auto save new product in Firebase catalog
                     const pKey = name.replace(/[.#$/[\]]/g, "_");
                     productsRef.child(pKey).set(name);
                 }
@@ -703,12 +703,12 @@
             if (editingId) {
                 invoicesRef.child(editingId).update(record).then(() => {
                     cancelEditing();
-                    alert("এন্ট্রি সফলভাবে আপডেট হয়েছে!");
+                    alert("Entry shafollobhabe update hoyeche!");
                 });
             } else {
                 invoicesRef.push(record).then(() => {
                     resetFormState();
-                    alert("সফলভাবে সেভ হয়েছে!");
+                    alert("Shafollobhabe save hoyeche!");
                 });
             }
         }
@@ -720,7 +720,6 @@
             document.getElementById('productRowsContainer').innerHTML = '';
             addProductRow();
 
-            // Reset Radio Buttons
             const radios = document.getElementsByName('entryType');
             radios.forEach(r => r.checked = false);
 
@@ -734,23 +733,21 @@
             if (!inv) return;
 
             document.getElementById('editingRecordId').value = id;
-            document.getElementById('invoiceNumber').value = inv.invoiceNo !== 'N/A' ? inv.invoiceNo : '';
+            document.getElementById('invoiceNumber').value = (inv.invoiceNo && inv.invoiceNo !== 'N/A') ? inv.invoiceNo : (inv.invoice || '');
             document.getElementById('invoiceDate').value = inv.date || '';
 
-            // Set Radio Type
             const radios = document.getElementsByName('entryType');
             radios.forEach(r => {
                 r.checked = (r.value === inv.type);
             });
 
-            // Set Product Rows
             const container = document.getElementById('productRowsContainer');
             container.innerHTML = '';
 
             if (inv.items && Array.isArray(inv.items) && inv.items.length > 0) {
-                inv.items.forEach(item => addProductRow(item.product, item.qty));
-            } else if (inv.product) {
-                addProductRow(inv.product, inv.qty || 1);
+                inv.items.forEach(item => addProductRow(item.product || item.name || '', item.qty || 1));
+            } else if (inv.product || inv.productName) {
+                addProductRow(inv.product || inv.productName, inv.qty || inv.totalQty || 1);
             } else {
                 addProductRow();
             }
@@ -766,14 +763,25 @@
             resetFormState();
         }
 
+        // Helper Function for Qty
+        function getInvoiceTotalQty(inv) {
+            if (typeof inv.totalQty === 'number') return inv.totalQty;
+            if (typeof inv.qty === 'number') return inv.qty;
+            if (inv.items && Array.isArray(inv.items)) {
+                return inv.items.reduce((sum, item) => sum + (parseInt(item.qty, 10) || 0), 0);
+            }
+            return 0;
+        }
+
         function updateDashboardStats() {
             let totalIn = 0;
             let totalOut = 0;
 
             invoicesList.forEach(inv => {
-                const qty = inv.totalQty || inv.qty || 0;
-                if (inv.type === 'inbound') totalIn += qty;
-                else if (inv.type === 'outbound') totalOut += qty;
+                const qty = getInvoiceTotalQty(inv);
+                const type = (inv.type || '').toLowerCase();
+                if (type === 'inbound' || type === 'in') totalIn += qty;
+                else if (type === 'outbound' || type === 'out') totalOut += qty;
             });
 
             document.getElementById('statInboundCount').innerText = totalIn;
@@ -782,32 +790,44 @@
             document.getElementById('historyBadgeCount').innerText = invoicesList.length;
         }
 
+        // UPDATED SAFE RENDER HISTORY TABLE FUNCTION
         function renderHistoryTable() {
             const tbody = document.getElementById('historyTableBody');
+            if (!tbody) return;
+
             if (invoicesList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500">কোনো ডাটা পাওয়া যায়নি।</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500">Kuno data pawa jayni.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = invoicesList.slice().reverse().map(inv => {
-                const typeBadge = inv.type === 'inbound' 
+                const rawType = (inv.type || '').toLowerCase();
+                const typeBadge = (rawType === 'inbound' || rawType === 'in')
                     ? `<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-bold">IN</span>`
                     : `<span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-bold">OUT</span>`;
 
                 let productsSummary = "";
-                if (inv.items && Array.isArray(inv.items)) {
-                    productsSummary = inv.items.map(i => `${i.product} (${i.qty})`).join(', ');
-                } else if (inv.product) {
-                    productsSummary = `${inv.product} (${inv.qty || 0})`;
+                if (inv.items && Array.isArray(inv.items) && inv.items.length > 0) {
+                    productsSummary = inv.items.map(i => `${i.product || i.name || 'Unknown'} (${i.qty || 0})`).join(', ');
+                } else if (inv.product || inv.productName) {
+                    const pName = inv.product || inv.productName;
+                    const pQty = inv.qty || inv.totalQty || 0;
+                    productsSummary = `${pName} (${pQty})`;
+                } else {
+                    productsSummary = "N/A";
                 }
+
+                const totalQty = getInvoiceTotalQty(inv);
+                const invNo = inv.invoiceNo || inv.invoice || 'N/A';
+                const invDate = inv.date || (inv.timestamp ? new Date(inv.timestamp).toISOString().split('T')[0] : 'N/A');
 
                 return `
                     <tr>
-                        <td class="p-2.5 font-mono text-slate-300">${inv.date || '-'}</td>
+                        <td class="p-2.5 font-mono text-slate-300">${invDate}</td>
                         <td class="p-2.5">${typeBadge}</td>
-                        <td class="p-2.5 font-mono text-slate-300">${inv.invoiceNo || 'N/A'}</td>
+                        <td class="p-2.5 font-mono text-slate-300">${invNo}</td>
                         <td class="p-2.5 text-slate-200">${productsSummary}</td>
-                        <td class="p-2.5 text-right font-mono font-bold text-slate-100">${inv.totalQty || inv.qty || 0}</td>
+                        <td class="p-2.5 text-right font-mono font-bold text-slate-100">${totalQty}</td>
                         <td class="p-2.5 text-center no-print">
                             <div class="flex items-center justify-center space-x-1.5">
                                 <button onclick="editInvoiceRecord('${inv.id}')" class="text-amber-400 hover:text-amber-300 text-xs px-2 py-1 bg-amber-500/10 rounded border border-amber-500/20">
@@ -824,7 +844,7 @@
         }
 
         function deleteInvoiceRecord(id) {
-            if (confirm("আপনি কি নিশ্চিত যে এটি ডিলেট করতে চান?")) {
+            if (confirm("Apni ki nishchit je eti delete korte chan?")) {
                 invoicesRef.child(id).remove();
             }
         }
@@ -867,12 +887,10 @@
         function calculateProductStocks() {
             const stocks = {};
             
-            // Add full catalog products first
             fullCatalogSet.forEach(p => {
                 if (p) stocks[p] = { opening: 0, inQty: 0, outQty: 0 };
             });
 
-            // Set Opening Stock
             Object.keys(openingStockData).forEach(pKey => {
                 const item = openingStockData[pKey];
                 if (item && item.name) {
@@ -881,19 +899,19 @@
                 }
             });
 
-            // Calculate Inbound and Outbound
             invoicesList.forEach(inv => {
                 const processItem = (pName, qty, type) => {
                     if (!pName) return;
                     if (!stocks[pName]) stocks[pName] = { opening: 0, inQty: 0, outQty: 0 };
-                    if (type === 'inbound') stocks[pName].inQty += qty;
-                    if (type === 'outbound') stocks[pName].outQty += qty;
+                    const rawType = (type || '').toLowerCase();
+                    if (rawType === 'inbound' || rawType === 'in') stocks[pName].inQty += qty;
+                    if (rawType === 'outbound' || rawType === 'out') stocks[pName].outQty += qty;
                 };
 
                 if (inv.items && Array.isArray(inv.items)) {
-                    inv.items.forEach(i => processItem(i.product, i.qty, inv.type));
-                } else if (inv.product) {
-                    processItem(inv.product, inv.qty || 0, inv.type);
+                    inv.items.forEach(i => processItem(i.product || i.name, parseInt(i.qty, 10) || 0, inv.type));
+                } else if (inv.product || inv.productName) {
+                    processItem(inv.product || inv.productName, getInvoiceTotalQty(inv), inv.type);
                 }
             });
 
@@ -914,14 +932,13 @@
             }
 
             if (keys.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-slate-500">কোনো স্টক ডাটা পাওয়া যায়নি।</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-slate-500">Kuno stock data pawa jayni.</td></tr>`;
                 return;
             }
 
             tbody.innerHTML = keys.map(pName => {
                 const st = stocks[pName];
                 const currentStock = st.opening + st.inQty - st.outQty;
-                // Escape quotes for safe function argument calling
                 const safeName = pName.replace(/'/g, "\\'");
                 return `
                     <tr>
@@ -951,7 +968,7 @@
             const qty = parseInt(document.getElementById('stockQtyInput').value, 10);
 
             if (!pName || isNaN(qty)) {
-                alert("সঠিক প্রোডাক্টের নাম এবং সংখ্যা লিখুন।");
+                alert("Sothik product name ebong shongkha likhun.");
                 return;
             }
 
@@ -962,7 +979,7 @@
             }).then(() => {
                 document.getElementById('stockProductName').value = '';
                 document.getElementById('stockQtyInput').value = '';
-                alert("ওপেনিং স্টক সফলভাবে সেভ/আপডেট হয়েছে!");
+                alert("Opening stock shafollobhabe save/update hoyeche!");
             });
         }
 
@@ -970,9 +987,12 @@
             let csv = "Date,Type,InvoiceNo,Products,TotalQty\n";
             invoicesList.forEach(inv => {
                 let prods = "";
-                if (inv.items) prods = inv.items.map(i => `${i.product}(${i.qty})`).join(';');
-                else prods = `${inv.product}(${inv.qty||0})`;
-                csv += `"${inv.date}","${inv.type}","${inv.invoiceNo}","${prods}","${inv.totalQty||inv.qty||0}"\n`;
+                if (inv.items && Array.isArray(inv.items)) {
+                    prods = inv.items.map(i => `${i.product||i.name}(${i.qty||0})`).join(';');
+                } else {
+                    prods = `${inv.product||inv.productName||'N/A'}(${getInvoiceTotalQty(inv)})`;
+                }
+                csv += `"${inv.date||'N/A'}","${inv.type||'N/A'}","${inv.invoiceNo||inv.invoice||'N/A'}","${prods}","${getInvoiceTotalQty(inv)}"\n`;
             });
 
             const blob = new Blob([csv], { type: 'text/csv' });
