@@ -128,7 +128,13 @@
                 </div>
 
                 <div class="flex items-center space-x-2 sm:space-x-3">
-                    <!-- PWA Install Button (Auto-shows when browser triggers event) -->
+                    <!-- Admin Protected Stock View Button -->
+                    <button onclick="openAdminStockModal()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-bold rounded-xl text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 transition border border-amber-500/30">
+                        <i class="fa-solid fa-lock text-amber-400 mr-1.5"></i>
+                        <span>Stock View</span>
+                    </button>
+
+                    <!-- PWA Install Button -->
                     <button id="installPwaBtn" onclick="installPWA()" class="hidden inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-xl text-slate-950 bg-gradient-to-r from-emerald-400 to-brand-400 hover:from-emerald-300 hover:to-brand-300 transition shadow-lg shadow-emerald-500/20 animate-bounce">
                         <i class="fa-solid fa-download mr-1.5"></i>
                         <span>Install App</span>
@@ -176,7 +182,7 @@
                     <i class="fa-solid fa-warehouse"></i>
                 </div>
                 <div>
-                    <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Net Stock</p>
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Net Movement</p>
                     <p class="text-xs sm:text-sm font-bold text-blue-400 font-mono" id="statNetStockCount">0</p>
                 </div>
             </div>
@@ -260,7 +266,6 @@
                 <div class="space-y-3">
                     <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Product Items</label>
                     <div id="productRowsContainer" class="space-y-2.5">
-                        <!-- Initial Row -->
                         <div class="product-row grid grid-cols-12 gap-2 items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
                             <div class="col-span-7 sm:col-span-8">
                                 <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" autocomplete="off" required>
@@ -277,7 +282,6 @@
                     </div>
                 </div>
 
-                <!-- Add Product Button -->
                 <div class="pt-1">
                     <button type="button" onclick="addProductRow()" class="w-full py-2.5 bg-slate-800/80 hover:bg-slate-800 text-brand-400 border border-brand-500/30 rounded-xl font-semibold text-xs transition flex items-center justify-center space-x-2">
                         <i class="fa-solid fa-plus text-xs"></i>
@@ -285,7 +289,6 @@
                     </button>
                 </div>
 
-                <!-- Submit Button -->
                 <button type="submit" id="submitBtn" class="w-full py-3 bg-gradient-to-r from-brand-600 to-emerald-500 hover:from-brand-500 hover:to-emerald-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-brand-500/20 transition flex items-center justify-center space-x-2">
                     <i class="fa-solid fa-floppy-disk text-sm"></i>
                     <span>Save & Sync Across Devices</span>
@@ -324,9 +327,83 @@
 
     </main>
 
+    <!-- ADMIN PASSWORD MODAL -->
+    <div id="adminAuthModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center z-50 p-4">
+        <div class="bg-cardbg border border-cardborder p-6 rounded-2xl max-w-sm w-full space-y-4 shadow-2xl">
+            <div class="text-center space-y-1">
+                <div class="w-12 h-12 bg-amber-500/10 text-amber-400 rounded-full flex items-center justify-center mx-auto text-xl border border-amber-500/20">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3 class="font-bold text-white text-base">Admin Security Check</h3>
+                <p class="text-xs text-slate-400">Stock view dekhar jonno Admin Password din</p>
+            </div>
+            <div>
+                <input type="password" id="adminPinInput" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-center text-lg tracking-widest text-white focus:outline-none focus:border-amber-500 font-mono" placeholder="••••">
+                <p id="pinErrorMsg" class="text-[11px] text-red-400 text-center mt-1.5 hidden">ভুল পাসওয়ার্ড! আবার চেষ্টা করুন।</p>
+            </div>
+            <div class="flex space-x-2">
+                <button onclick="closeAdminAuthModal()" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold rounded-xl text-xs transition">Cancel</button>
+                <button onclick="verifyAdminPin()" class="flex-1 py-2 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold rounded-xl text-xs transition">Unlock View</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- REAL TIME STOCK MANAGER MODAL -->
+    <div id="stockViewModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-md hidden items-center justify-center z-50 p-3 sm:p-6 overflow-y-auto">
+        <div class="bg-cardbg border border-cardborder p-4 sm:p-6 rounded-2xl max-w-4xl w-full space-y-4 shadow-2xl my-auto">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="font-bold text-white text-base flex items-center">
+                    <i class="fa-solid fa-boxes-stacked text-amber-400 mr-2"></i>
+                    Real-Time Warehouse Stock
+                </h3>
+                <div class="flex items-center space-x-2">
+                    <button onclick="exportStockCSV()" class="px-2.5 py-1 text-xs bg-slate-800 hover:bg-slate-700 text-emerald-400 rounded-lg border border-slate-700 transition">
+                        <i class="fa-solid fa-file-excel mr-1"></i>Export
+                    </button>
+                    <button onclick="closeStockViewModal()" class="text-slate-400 hover:text-white px-2 py-1">
+                        <i class="fa-solid fa-xmark text-lg"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Set Initial Stock / Edit Stock Form -->
+            <div class="bg-slate-950 p-3 rounded-xl border border-slate-800 space-y-2">
+                <p class="text-[11px] font-bold text-amber-400 uppercase tracking-wider">➕ Add / Adjust Opening Stock</p>
+                <div class="grid grid-cols-12 gap-2">
+                    <div class="col-span-7 sm:col-span-8">
+                        <input type="text" id="stockProductName" list="productCatalogList" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-500" placeholder="Product name">
+                    </div>
+                    <div class="col-span-3 sm:col-span-2">
+                        <input type="number" id="stockQtyInput" class="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-amber-500" placeholder="Opening Qty">
+                    </div>
+                    <div class="col-span-2 sm:col-span-2">
+                        <button onclick="saveOpeningStock()" class="w-full py-1.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold text-xs rounded-lg transition">Save</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stock Table -->
+            <div class="max-h-80 overflow-y-auto">
+                <table class="w-full text-left sheet-table text-xs">
+                    <thead class="sticky top-0 bg-slate-900 text-slate-300 font-mono">
+                        <tr>
+                            <th class="p-2">Product Name</th>
+                            <th class="p-2 text-center">Opening Stock</th>
+                            <th class="p-2 text-center text-emerald-400">Total In</th>
+                            <th class="p-2 text-center text-amber-400">Total Out</th>
+                            <th class="p-2 text-center font-bold text-blue-400">Current Stock</th>
+                        </tr>
+                    </thead>
+                    <tbody id="stockTableBody">
+                        <!-- Dynamic Stock Content -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
     <!-- PWA Auto Injector Script -->
     <script>
-        // Inline Dynamic Manifest Injection
         const manifestObj = {
             "name": "Warehouse Invoice Manager",
             "short_name": "WarehouseApp",
@@ -335,16 +412,8 @@
             "background_color": "#080c14",
             "theme_color": "#080c14",
             "icons": [
-                {
-                    "src": "https://cdn-icons-png.flaticon.com/512/3652/3652191.png",
-                    "sizes": "192x192",
-                    "type": "image/png"
-                },
-                {
-                    "src": "https://cdn-icons-png.flaticon.com/512/3652/3652191.png",
-                    "sizes": "512x512",
-                    "type": "image/png"
-                }
+                { "src": "https://cdn-icons-png.flaticon.com/512/3652/3652191.png", "sizes": "192x192", "type": "image/png" },
+                { "src": "https://cdn-icons-png.flaticon.com/512/3652/3652191.png", "sizes": "512x512", "type": "image/png" }
             ]
         };
         const manifestBlob = new Blob([JSON.stringify(manifestObj)], {type: 'application/json'});
@@ -354,7 +423,6 @@
         manifestLink.href = manifestURL;
         document.head.appendChild(manifestLink);
 
-        // Register Inline Service Worker
         if ('serviceWorker' in navigator) {
             const swCode = `
                 self.addEventListener('install', e => self.skipWaiting());
@@ -366,7 +434,6 @@
             navigator.serviceWorker.register(swUrl).catch(err => console.log('SW Note:', err));
         }
 
-        // PWA Install Prompt Listener
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
@@ -388,7 +455,7 @@
         }
     </script>
 
-    <!-- Firebase Logic & Application Code -->
+    <!-- Firebase Logic & Complete Application Script -->
     <script>
         const initialProductsList = [
             "Pegasus 15 SC — 50 ml", "Amistar Top — 500 ml", "Amistar Top — 50 ml", "Mortar 48 EC — 50 ml", 
@@ -463,19 +530,31 @@
             measurementId: "G-MHVJQ27PGH"
         };
 
+        const ADMIN_PIN = "1234"; // Default Password for Admin View
+
         let db = null;
         let invoicesRef = null;
         let productsRef = null;
+        let openingStockRef = null;
+
         let invoicesList = [];
+        let openingStockData = {};
         let dbCatalogSet = new Set();
         let fullCatalogSet = new Set(initialProductsList);
-        let editingInvoiceId = null;
 
         try {
             firebase.initializeApp(firebaseConfig);
             db = firebase.database();
             invoicesRef = db.ref('invoices');
             productsRef = db.ref('products');
+            openingStockRef = db.ref('opening_stock');
+
+            document.getElementById('invoiceDate').valueAsDate = new Date();
+
+            openingStockRef.on('value', (snapshot) => {
+                openingStockData = snapshot.val() || {};
+                renderStockTable();
+            });
 
             productsRef.on('value', (snapshot) => {
                 const data = snapshot.val();
@@ -499,9 +578,10 @@
                 updateDashboardStats();
                 renderHistoryTable();
                 rebuildProductCatalog();
+                renderStockTable();
             });
         } catch (error) {
-            console.error("Firebase Config Error:", error);
+            console.error("Firebase Initialization Error:", error);
         }
 
         function rebuildProductCatalog() {
@@ -523,16 +603,35 @@
             datalist.innerHTML = sortedList.map(item => `<option value="${item}">${item}</option>`).join('');
         }
 
-        function addProductRow(productVal = '', qtyVal = '') {
+        function switchTab(tab) {
+            const scanView = document.getElementById('tabScanView');
+            const historyView = document.getElementById('tabHistoryView');
+            const scanBtn = document.getElementById('tabScanBtn');
+            const historyBtn = document.getElementById('tabHistoryBtn');
+
+            if (tab === 'scan') {
+                scanView.classList.remove('hidden');
+                historyView.classList.add('hidden');
+                scanBtn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 bg-brand-500/20 text-brand-400 border border-brand-500/40";
+                historyBtn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-800/50";
+            } else {
+                scanView.classList.add('hidden');
+                historyView.classList.remove('hidden');
+                historyBtn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 bg-brand-500/20 text-brand-400 border border-brand-500/40";
+                scanBtn.className = "flex-1 py-2.5 px-4 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-800/50";
+            }
+        }
+
+        function addProductRow() {
             const container = document.getElementById('productRowsContainer');
-            const rowDiv = document.createElement('div');
-            rowDiv.className = "product-row grid grid-cols-12 gap-2 items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80";
-            rowDiv.innerHTML = `
+            const row = document.createElement('div');
+            row.className = "product-row grid grid-cols-12 gap-2 items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80";
+            row.innerHTML = `
                 <div class="col-span-7 sm:col-span-8">
-                    <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" value="${productVal}" placeholder="Product name (type to search)" autocomplete="off" required>
+                    <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" autocomplete="off" required>
                 </div>
                 <div class="col-span-3 sm:col-span-3">
-                    <input type="number" min="1" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" value="${qtyVal}" placeholder="Qty" required>
+                    <input type="number" min="1" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="Qty" required>
                 </div>
                 <div class="col-span-2 sm:col-span-1 text-right">
                     <button type="button" onclick="removeProductRow(this)" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 flex items-center justify-center transition text-xs mx-auto">
@@ -540,183 +639,269 @@
                     </button>
                 </div>
             `;
-            container.appendChild(rowDiv);
+            container.appendChild(row);
         }
 
-        function removeProductRow(button) {
-            const container = document.getElementById('productRowsContainer');
-            if (container.children.length > 1) {
-                button.closest('.product-row').remove();
+        function removeProductRow(btn) {
+            const rows = document.querySelectorAll('.product-row');
+            if (rows.length > 1) {
+                btn.closest('.product-row').remove();
             } else {
-                alert("At least one product item is required!");
+                alert("কমপক্ষে ১ টি প্রোডাক্ট এন্ট্রি রাখতে হবে।");
             }
         }
 
-        function saveInvoiceRecord(event) {
-            event.preventDefault();
-            if (!invoicesRef) return;
-
-            const submitBtn = document.getElementById('submitBtn');
-            submitBtn.disabled = true;
-
+        function saveInvoiceRecord(e) {
+            e.preventDefault();
             const entryType = document.querySelector('input[name="entryType"]:checked').value;
             const invoiceNumber = document.getElementById('invoiceNumber').value.trim();
-            const invoiceDate = document.getElementById('invoiceDate').value;
+            const date = document.getElementById('invoiceDate').value;
 
-            const rowElements = document.querySelectorAll('.product-row');
+            const rows = document.querySelectorAll('.product-row');
             const items = [];
+            let totalQty = 0;
 
-            rowElements.forEach(row => {
+            rows.forEach(row => {
                 const name = row.querySelector('.product-name').value.trim();
-                const qty = parseInt(row.querySelector('.product-qty').value) || 0;
+                const qty = parseInt(row.querySelector('.product-qty').value, 10);
                 if (name && qty > 0) {
-                    items.push({ product: name, quantity: qty });
-                    if (!fullCatalogSet.has(name) && productsRef) {
-                        productsRef.push(name);
-                        fullCatalogSet.add(name);
-                    }
+                    items.push({ product: name, qty: qty });
+                    totalQty += qty;
+                    // Auto save new product in Firebase catalog
+                    const pKey = name.replace(/[.#$/[\]]/g, "_");
+                    productsRef.child(pKey).set(name);
                 }
             });
 
-            if (items.length === 0) {
-                alert("Please add at least one valid product!");
-                submitBtn.disabled = false;
-                return;
-            }
+            if (items.length === 0) return;
 
-            const recordData = {
+            const record = {
                 type: entryType,
-                number: invoiceNumber || 'N/A',
-                date: invoiceDate,
+                invoiceNo: invoiceNumber || "N/A",
+                date: date,
                 items: items,
-                timestamp: Date.now()
+                totalQty: totalQty,
+                timestamp: firebase.database.ServerValue.TIMESTAMP
             };
 
-            const savePromise = editingInvoiceId 
-                ? invoicesRef.child(editingInvoiceId).set(recordData)
-                : invoicesRef.push(recordData);
-
-            savePromise.then(() => {
-                alert("Saved & synced successfully!");
-                cancelEditing();
-            }).finally(() => {
-                submitBtn.disabled = false;
+            invoicesRef.push(record).then(() => {
+                document.getElementById('invoiceForm').reset();
+                document.getElementById('invoiceDate').valueAsDate = new Date();
+                document.getElementById('productRowsContainer').innerHTML = '';
+                addProductRow();
+                alert("সফলভাবে সেভ হয়েছে!");
             });
-        }
-
-        function editRecord(id) {
-            const inv = invoicesList.find(item => item.id === id);
-            if (!inv) return;
-
-            editingInvoiceId = id;
-            const radio = document.querySelector(`input[name="entryType"][value="${inv.type}"]`);
-            if (radio) radio.checked = true;
-
-            document.getElementById('invoiceNumber').value = (inv.number === 'N/A') ? '' : inv.number;
-            document.getElementById('invoiceDate').value = inv.date || new Date().toISOString().slice(0, 10);
-
-            const container = document.getElementById('productRowsContainer');
-            container.innerHTML = '';
-            const items = (inv.items && Array.isArray(inv.items)) ? inv.items : [{ product: inv.product || '', quantity: inv.quantity || 1 }];
-            items.forEach(i => addProductRow(i.product, i.quantity));
-
-            document.getElementById('formHeaderTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-400 mr-2"></i>Edit Invoice Entry`;
-            document.getElementById('cancelEditBtn').classList.remove('hidden');
-            switchTab('scan');
-        }
-
-        function cancelEditing() {
-            editingInvoiceId = null;
-            document.getElementById('invoiceForm').reset();
-            document.getElementById('invoiceDate').valueAsDate = new Date();
-            document.getElementById('formHeaderTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-400 mr-2"></i>Invoice Entry Form`;
-            document.getElementById('cancelEditBtn').classList.add('hidden');
-            document.getElementById('productRowsContainer').innerHTML = '';
-            addProductRow();
         }
 
         function updateDashboardStats() {
-            let inboundTotal = 0, outboundTotal = 0;
+            let totalIn = 0;
+            let totalOut = 0;
+
             invoicesList.forEach(inv => {
-                if (inv.items && Array.isArray(inv.items)) {
-                    inv.items.forEach(item => {
-                        if (inv.type === 'inbound') inboundTotal += Number(item.quantity || 0);
-                        if (inv.type === 'outbound') outboundTotal += Number(item.quantity || 0);
-                    });
-                }
+                const qty = inv.totalQty || inv.qty || 0;
+                if (inv.type === 'inbound') totalIn += qty;
+                else if (inv.type === 'outbound') totalOut += qty;
             });
-            document.getElementById('statInboundCount').innerText = inboundTotal;
-            document.getElementById('statOutboundCount').innerText = outboundTotal;
-            document.getElementById('statNetStockCount').innerText = inboundTotal - outboundTotal;
+
+            document.getElementById('statInboundCount').innerText = totalIn;
+            document.getElementById('statOutboundCount').innerText = totalOut;
+            document.getElementById('statNetStockCount').innerText = totalIn - totalOut;
             document.getElementById('historyBadgeCount').innerText = invoicesList.length;
         }
 
         function renderHistoryTable() {
             const tbody = document.getElementById('historyTableBody');
-            if (!tbody) return;
             if (invoicesList.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500">No records found</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500">কোনো ডাটা পাওয়া যায়নি।</td></tr>`;
                 return;
             }
-            tbody.innerHTML = [...invoicesList].reverse().map(inv => {
-                let itemsSummary = '', totalQty = 0;
+
+            tbody.innerHTML = invoicesList.slice().reverse().map(inv => {
+                const typeBadge = inv.type === 'inbound' 
+                    ? `<span class="bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded text-[10px] font-bold">IN</span>`
+                    : `<span class="bg-amber-500/20 text-amber-400 border border-amber-500/30 px-2 py-0.5 rounded text-[10px] font-bold">OUT</span>`;
+
+                let productsSummary = "";
                 if (inv.items && Array.isArray(inv.items)) {
-                    itemsSummary = inv.items.map(i => `<div class="py-0.5"><span class="text-white font-medium">${i.product}</span> <span class="text-slate-400 font-mono">(${i.quantity})</span></div>`).join('');
-                    totalQty = inv.items.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
+                    productsSummary = inv.items.map(i => `${i.product} (${i.qty})`).join(', ');
+                } else if (inv.product) {
+                    productsSummary = `${inv.product} (${inv.qty || 0})`;
                 }
+
                 return `
-                    <tr class="border-b border-slate-800">
-                        <td class="p-2.5 font-mono text-slate-400 align-top">${inv.date || '-'}</td>
-                        <td class="p-2.5 align-top">
-                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${inv.type === 'inbound' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}">
-                                ${inv.type === 'inbound' ? 'IN' : 'OUT'}
-                            </span>
-                        </td>
-                        <td class="p-2.5 font-mono font-semibold text-white align-top">${inv.number || 'N/A'}</td>
-                        <td class="p-2.5 text-slate-200 align-top">${itemsSummary}</td>
-                        <td class="p-2.5 text-right font-mono font-bold align-top ${inv.type === 'inbound' ? 'text-emerald-400' : 'text-amber-400'}">${totalQty}</td>
-                        <td class="p-2.5 text-center no-print align-top space-x-1">
-                            <button onclick="editRecord('${inv.id}')" class="text-amber-400 hover:text-amber-300 p-1"><i class="fa-solid fa-pen-to-square"></i></button>
-                            <button onclick="deleteRecord('${inv.id}')" class="text-red-400 hover:text-red-300 p-1"><i class="fa-solid fa-trash"></i></button>
+                    <tr>
+                        <td class="p-2.5 font-mono text-slate-300">${inv.date || '-'}</td>
+                        <td class="p-2.5">${typeBadge}</td>
+                        <td class="p-2.5 font-mono text-slate-300">${inv.invoiceNo || 'N/A'}</td>
+                        <td class="p-2.5 text-slate-200">${productsSummary}</td>
+                        <td class="p-2.5 text-right font-mono font-bold text-slate-100">${inv.totalQty || inv.qty || 0}</td>
+                        <td class="p-2.5 text-center no-print">
+                            <button onclick="deleteInvoiceRecord('${inv.id}')" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 bg-red-500/10 rounded border border-red-500/20">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
                         </td>
                     </tr>
                 `;
             }).join('');
         }
 
-        function deleteRecord(id) {
-            if (confirm("Delete this invoice?")) db.ref('invoices/' + id).remove();
-        }
-
-        function switchTab(tabName) {
-            const scanView = document.getElementById('tabScanView');
-            const historyView = document.getElementById('tabHistoryView');
-            if (tabName === 'scan') {
-                scanView.classList.remove('hidden');
-                historyView.classList.add('hidden');
-            } else {
-                scanView.classList.add('hidden');
-                historyView.classList.remove('hidden');
+        function deleteInvoiceRecord(id) {
+            if (confirm("আপনি কি নিশ্চিত যে এটি ডিলেট করতে চান?")) {
+                invoicesRef.child(id).remove();
             }
         }
 
-        function exportToCSV() {
-            let csvContent = "data:text/csv;charset=utf-8,Date,Type,Invoice Number,Product Name,Quantity\n";
-            invoicesList.forEach(row => {
-                if (row.items) row.items.forEach(item => csvContent += `${row.date},${row.type},${row.number},"${item.product}",${item.quantity}\n`);
-            });
-            const link = document.createElement("a");
-            link.setAttribute("href", encodeURI(csvContent));
-            link.setAttribute("download", `warehouse_stock_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+        /* --- ADMIN SECURITY & REAL-TIME STOCK MANAGEMENT --- */
+        function openAdminStockModal() {
+            document.getElementById('adminPinInput').value = '';
+            document.getElementById('pinErrorMsg').classList.add('hidden');
+            document.getElementById('adminAuthModal').classList.remove('hidden');
+            document.getElementById('adminAuthModal').classList.add('flex');
+            document.getElementById('adminPinInput').focus();
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
-            document.getElementById('invoiceDate').valueAsDate = new Date();
-            rebuildProductCatalog();
-        });
+        function closeAdminAuthModal() {
+            document.getElementById('adminAuthModal').classList.add('hidden');
+            document.getElementById('adminAuthModal').classList.remove('flex');
+        }
+
+        function verifyAdminPin() {
+            const inputPin = document.getElementById('adminPinInput').value;
+            if (inputPin === ADMIN_PIN) {
+                closeAdminAuthModal();
+                showStockViewModal();
+            } else {
+                document.getElementById('pinErrorMsg').classList.remove('hidden');
+            }
+        }
+
+        function showStockViewModal() {
+            renderStockTable();
+            document.getElementById('stockViewModal').classList.remove('hidden');
+            document.getElementById('stockViewModal').classList.add('flex');
+        }
+
+        function closeStockViewModal() {
+            document.getElementById('stockViewModal').classList.add('hidden');
+            document.getElementById('stockViewModal').classList.remove('flex');
+        }
+
+        function calculateProductStocks() {
+            const stocks = {};
+            
+            // Add full catalog products first
+            fullCatalogSet.forEach(p => {
+                if (p) stocks[p] = { opening: 0, inQty: 0, outQty: 0 };
+            });
+
+            // Set Opening Stock
+            Object.keys(openingStockData).forEach(pKey => {
+                const item = openingStockData[pKey];
+                if (item && item.name) {
+                    if (!stocks[item.name]) stocks[item.name] = { opening: 0, inQty: 0, outQty: 0 };
+                    stocks[item.name].opening = item.qty || 0;
+                }
+            });
+
+            // Calculate Inbound and Outbound
+            invoicesList.forEach(inv => {
+                const processItem = (pName, qty, type) => {
+                    if (!pName) return;
+                    if (!stocks[pName]) stocks[pName] = { opening: 0, inQty: 0, outQty: 0 };
+                    if (type === 'inbound') stocks[pName].inQty += qty;
+                    if (type === 'outbound') stocks[pName].outQty += qty;
+                };
+
+                if (inv.items && Array.isArray(inv.items)) {
+                    inv.items.forEach(i => processItem(i.product, i.qty, inv.type));
+                } else if (inv.product) {
+                    processItem(inv.product, inv.qty || 0, inv.type);
+                }
+            });
+
+            return stocks;
+        }
+
+        function renderStockTable() {
+            const tbody = document.getElementById('stockTableBody');
+            if (!tbody) return;
+
+            const stocks = calculateProductStocks();
+            const keys = Object.keys(stocks).sort();
+
+            if (keys.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-slate-500">কোনো স্টক ডাটা নেই।</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = keys.map(pName => {
+                const st = stocks[pName];
+                const currentStock = st.opening + st.inQty - st.outQty;
+                return `
+                    <tr>
+                        <td class="p-2 font-medium text-slate-200">${pName}</td>
+                        <td class="p-2 text-center font-mono text-slate-400">${st.opening}</td>
+                        <td class="p-2 text-center font-mono text-emerald-400">${st.inQty}</td>
+                        <td class="p-2 text-center font-mono text-amber-400">${st.outQty}</td>
+                        <td class="p-2 text-center font-mono font-bold ${currentStock < 0 ? 'text-red-400' : 'text-blue-400'}">${currentStock}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function saveOpeningStock() {
+            const pName = document.getElementById('stockProductName').value.trim();
+            const qty = parseInt(document.getElementById('stockQtyInput').value, 10);
+
+            if (!pName || isNaN(qty)) {
+                alert("সঠিক প্রোডাক্টের নাম এবং সংখ্যা লিখুন।");
+                return;
+            }
+
+            const pKey = pName.replace(/[.#$/[\]]/g, "_");
+            openingStockRef.child(pKey).set({
+                name: pName,
+                qty: qty
+            }).then(() => {
+                document.getElementById('stockProductName').value = '';
+                document.getElementById('stockQtyInput').value = '';
+                alert("ওপেনিং স্টক সেভ হয়েছে!");
+            });
+        }
+
+        function exportToCSV() {
+            let csv = "Date,Type,InvoiceNo,Products,TotalQty\n";
+            invoicesList.forEach(inv => {
+                let prods = "";
+                if (inv.items) prods = inv.items.map(i => `${i.product}(${i.qty})`).join(';');
+                else prods = `${inv.product}(${inv.qty||0})`;
+                csv += `"${inv.date}","${inv.type}","${inv.invoiceNo}","${prods}","${inv.totalQty||inv.qty||0}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `warehouse_history_${new Date().toISOString().slice(0,10)}.csv`);
+            a.click();
+        }
+
+        function exportStockCSV() {
+            const stocks = calculateProductStocks();
+            let csv = "Product Name,Opening Stock,Total In,Total Out,Current Stock\n";
+            Object.keys(stocks).sort().forEach(p => {
+                const s = stocks[p];
+                const curr = s.opening + s.inQty - s.outQty;
+                csv += `"${p}","${s.opening}","${s.inQty}","${s.outQty}","${curr}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `warehouse_stock_${new Date().toISOString().slice(0,10)}.csv`);
+            a.click();
+        }
     </script>
 </body>
 </html>
