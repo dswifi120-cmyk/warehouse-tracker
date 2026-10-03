@@ -213,27 +213,29 @@
         <!-- Tab 1: Form Entry View -->
         <div id="tabScanView" class="grid grid-cols-1 gap-5">
             <form id="invoiceForm" onsubmit="saveInvoiceRecord(event)" class="bg-cardbg p-4 sm:p-5 rounded-2xl border border-cardborder shadow-xl space-y-4">
+                <input type="hidden" id="editingRecordId" value="">
+                
                 <div class="flex items-center justify-between border-b border-slate-800 pb-3">
                     <h2 class="font-bold text-slate-100 text-sm flex items-center" id="formHeaderTitle">
                         <i class="fa-solid fa-pen-to-square text-brand-400 mr-2"></i>
                         Invoice Entry Form
                     </h2>
                     <div class="flex items-center space-x-2">
-                        <button type="button" id="cancelEditBtn" onclick="cancelEditing()" class="hidden text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20 font-medium">
+                        <button type="button" id="cancelEditBtn" onclick="cancelEditing()" class="hidden text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 font-medium">
                             <i class="fa-solid fa-xmark mr-1"></i>Cancel Edit
                         </button>
                         <span class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-mono">Live Sync Active</span>
                     </div>
                 </div>
 
-                <!-- Entry Type Selector -->
+                <!-- Entry Type Selector (Required Selection, No Default Check) -->
                 <div class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
                     <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider px-1">
                         Select Entry Type <span class="text-red-400">*</span>
                     </label>
                     <div class="grid grid-cols-2 gap-2">
                         <label class="cursor-pointer">
-                            <input type="radio" name="entryType" value="inbound" checked class="peer sr-only">
+                            <input type="radio" name="entryType" value="inbound" required class="peer sr-only">
                             <div class="p-2.5 rounded-xl border border-slate-800 bg-slate-900 peer-checked:bg-emerald-500/20 peer-checked:border-emerald-500 peer-checked:text-emerald-300 text-slate-400 text-xs font-bold flex items-center justify-center space-x-2 transition">
                                 <i class="fa-solid fa-arrow-down-left text-emerald-400"></i>
                                 <span>📥 Inbound (Stock In)</span>
@@ -241,7 +243,7 @@
                         </label>
 
                         <label class="cursor-pointer">
-                            <input type="radio" name="entryType" value="outbound" class="peer sr-only">
+                            <input type="radio" name="entryType" value="outbound" required class="peer sr-only">
                             <div class="p-2.5 rounded-xl border border-slate-800 bg-slate-900 peer-checked:bg-amber-500/20 peer-checked:border-amber-500 peer-checked:text-amber-300 text-slate-400 text-xs font-bold flex items-center justify-center space-x-2 transition">
                                 <i class="fa-solid fa-arrow-up-right text-amber-400"></i>
                                 <span>📤 Outbound (Stock Out)</span>
@@ -291,7 +293,7 @@
 
                 <button type="submit" id="submitBtn" class="w-full py-3 bg-gradient-to-r from-brand-600 to-emerald-500 hover:from-brand-500 hover:to-emerald-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-brand-500/20 transition flex items-center justify-center space-x-2">
                     <i class="fa-solid fa-floppy-disk text-sm"></i>
-                    <span>Save & Sync Across Devices</span>
+                    <span id="submitBtnText">Save & Sync Across Devices</span>
                 </button>
             </form>
         </div>
@@ -622,16 +624,16 @@
             }
         }
 
-        function addProductRow() {
+        function addProductRow(productName = '', qtyVal = '') {
             const container = document.getElementById('productRowsContainer');
             const row = document.createElement('div');
             row.className = "product-row grid grid-cols-12 gap-2 items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80";
             row.innerHTML = `
                 <div class="col-span-7 sm:col-span-8">
-                    <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" autocomplete="off" required>
+                    <input type="text" list="productCatalogList" value="${productName}" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" autocomplete="off" required>
                 </div>
                 <div class="col-span-3 sm:col-span-3">
-                    <input type="number" min="1" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="Qty" required>
+                    <input type="number" min="1" value="${qtyVal}" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="Qty" required>
                 </div>
                 <div class="col-span-2 sm:col-span-1 text-right">
                     <button type="button" onclick="removeProductRow(this)" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 flex items-center justify-center transition text-xs mx-auto">
@@ -653,9 +655,16 @@
 
         function saveInvoiceRecord(e) {
             e.preventDefault();
-            const entryType = document.querySelector('input[name="entryType"]:checked').value;
+            
+            const selectedType = document.querySelector('input[name="entryType"]:checked');
+            if (!selectedType) {
+                alert("অনুগ্রহ করে Entry Type (Inbound অথবা Outbound) সিলেক্ট করুন।");
+                return;
+            }
+            const entryType = selectedType.value;
             const invoiceNumber = document.getElementById('invoiceNumber').value.trim();
             const date = document.getElementById('invoiceDate').value;
+            const editingId = document.getElementById('editingRecordId').value;
 
             const rows = document.querySelectorAll('.product-row');
             const items = [];
@@ -684,13 +693,70 @@
                 timestamp: firebase.database.ServerValue.TIMESTAMP
             };
 
-            invoicesRef.push(record).then(() => {
-                document.getElementById('invoiceForm').reset();
-                document.getElementById('invoiceDate').valueAsDate = new Date();
-                document.getElementById('productRowsContainer').innerHTML = '';
-                addProductRow();
-                alert("সফলভাবে সেভ হয়েছে!");
+            if (editingId) {
+                invoicesRef.child(editingId).update(record).then(() => {
+                    cancelEditing();
+                    alert("এন্ট্রি সফলভাবে আপডেট হয়েছে!");
+                });
+            } else {
+                invoicesRef.push(record).then(() => {
+                    resetFormState();
+                    alert("সফলভাবে সেভ হয়েছে!");
+                });
+            }
+        }
+
+        function resetFormState() {
+            document.getElementById('invoiceForm').reset();
+            document.getElementById('invoiceDate').valueAsDate = new Date();
+            document.getElementById('editingRecordId').value = '';
+            document.getElementById('productRowsContainer').innerHTML = '';
+            addProductRow();
+
+            // Reset Radio Buttons
+            const radios = document.getElementsByName('entryType');
+            radios.forEach(r => r.checked = false);
+
+            document.getElementById('formHeaderTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-400 mr-2"></i>Invoice Entry Form`;
+            document.getElementById('submitBtnText').innerText = 'Save & Sync Across Devices';
+            document.getElementById('cancelEditBtn').classList.add('hidden');
+        }
+
+        function editInvoiceRecord(id) {
+            const inv = invoicesList.find(item => item.id === id);
+            if (!inv) return;
+
+            document.getElementById('editingRecordId').value = id;
+            document.getElementById('invoiceNumber').value = inv.invoiceNo !== 'N/A' ? inv.invoiceNo : '';
+            document.getElementById('invoiceDate').value = inv.date || '';
+
+            // Set Radio Type
+            const radios = document.getElementsByName('entryType');
+            radios.forEach(r => {
+                r.checked = (r.value === inv.type);
             });
+
+            // Set Product Rows
+            const container = document.getElementById('productRowsContainer');
+            container.innerHTML = '';
+
+            if (inv.items && Array.isArray(inv.items) && inv.items.length > 0) {
+                inv.items.forEach(item => addProductRow(item.product, item.qty));
+            } else if (inv.product) {
+                addProductRow(inv.product, inv.qty || 1);
+            } else {
+                addProductRow();
+            }
+
+            document.getElementById('formHeaderTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-400 mr-2"></i>Edit Invoice Entry`;
+            document.getElementById('submitBtnText').innerText = 'Update & Save Changes';
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
+
+            switchTab('scan');
+        }
+
+        function cancelEditing() {
+            resetFormState();
         }
 
         function updateDashboardStats() {
@@ -736,9 +802,14 @@
                         <td class="p-2.5 text-slate-200">${productsSummary}</td>
                         <td class="p-2.5 text-right font-mono font-bold text-slate-100">${inv.totalQty || inv.qty || 0}</td>
                         <td class="p-2.5 text-center no-print">
-                            <button onclick="deleteInvoiceRecord('${inv.id}')" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 bg-red-500/10 rounded border border-red-500/20">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
+                            <div class="flex items-center justify-center space-x-1.5">
+                                <button onclick="editInvoiceRecord('${inv.id}')" class="text-amber-400 hover:text-amber-300 text-xs px-2 py-1 bg-amber-500/10 rounded border border-amber-500/20">
+                                    <i class="fa-solid fa-pen"></i>
+                                </button>
+                                <button onclick="deleteInvoiceRecord('${inv.id}')" class="text-red-400 hover:text-red-300 text-xs px-2 py-1 bg-red-500/10 rounded border border-red-500/20">
+                                    <i class="fa-solid fa-trash"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 `;
