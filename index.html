@@ -1,503 +1,413 @@
 <!DOCTYPE html>
-<html lang="bn" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Warehouse Invoice Manager - Multi-Device Live Sync</title>
-    
-    <!-- PWA Web App Capable Meta Tags -->
-    <meta name="mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Warehouse App">
-    <meta name="theme-color" content="#080c14">
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/512/3652/3652191.png">
-
-    <!-- Tailwind CSS -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Warehouse Inventory & Invoice Tracker</title>
+    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
-
-    <!-- Firebase SDK (Compat Version) -->
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
-
+    <!-- Firebase App & Realtime Database SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+    
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
                     colors: {
-                        darkbg: '#080c14',
-                        cardbg: '#0f172a',
-                        cardborder: '#1e293b',
-                        sheetbg: '#0b1329',
                         brand: {
-                            50: '#ecfdf5',
-                            100: '#d1fae5',
-                            400: '#34d399',
-                            500: '#10b981',
-                            600: '#059669',
-                            700: '#047857',
+                            50: '#f0fdf4',
+                            400: '#4ade80',
+                            500: '#22c55e',
+                            600: '#16a34a',
                         }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'Hind Siliguri', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'monospace'],
                     }
                 }
             }
         }
     </script>
-    
-    <style>
-        body {
-            font-family: 'Inter', 'Hind Siliguri', sans-serif;
-            background-color: #080c14;
-            color: #f1f5f9;
-            -webkit-tap-highlight-color: transparent;
-        }
-        
-        .sheet-table th, .sheet-table td {
-            border: 1px solid #1e293b;
-        }
-        .sheet-table tr:nth-child(even) {
-            background-color: rgba(15, 23, 42, 0.6);
-        }
-        .sheet-table tr:nth-child(odd) {
-            background-color: rgba(11, 19, 41, 0.8);
-        }
-        .sheet-table tr:hover {
-            background-color: rgba(30, 41, 59, 0.9);
-        }
-
-        ::-webkit-scrollbar {
-            width: 6px;
-            height: 6px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0f172a;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #334155;
-            border-radius: 4px;
-        }
-
-        .glass-header {
-            background: rgba(15, 23, 42, 0.9);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-
-        @media print {
-            body { background-color: #ffffff !important; color: #000000 !important; }
-            header, nav, button, .no-print, #passwordModal { display: none !important; }
-            main { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
-            .bg-cardbg, .bg-sheetbg { background-color: #ffffff !important; color: #000000 !important; }
-            .sheet-table th, .sheet-table td { border: 1px solid #64748b !important; color: #000000 !important; }
-        }
-    </style>
 </head>
-<body class="text-slate-100 antialiased min-h-screen flex flex-col pb-20 md:pb-6">
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans pb-12">
 
-    <!-- Global Dynamic Datalist -->
-    <datalist id="productCatalogList"></datalist>
-
-    <!-- Header Section -->
-    <header class="glass-header border-b border-slate-800 sticky top-0 z-30 shadow-lg no-print">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex justify-between items-center h-16">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-brand-600 to-emerald-400 flex items-center justify-center text-slate-950 font-black shadow-lg shadow-brand-500/20">
-                        <i class="fa-solid fa-boxes-packing text-lg"></i>
-                    </div>
-                    <div>
-                        <h1 class="text-base font-bold text-white leading-tight tracking-tight flex items-center">
-                            Warehouse App
-                            <span id="syncBadge" class="ml-2 text-[10px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono flex items-center">
-                                <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 mr-1 animate-pulse"></span>
-                                Live Sync Ready
-                            </span>
-                        </h1>
-                        <p class="text-[11px] text-slate-400">Multi-device live sync connected</p>
-                    </div>
+    <!-- Top Navigation Bar -->
+    <header class="border-b border-slate-800 bg-slate-900/50 backdrop-blur sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-brand-500/20 text-brand-400 flex items-center justify-center border border-brand-500/30">
+                    <i class="fa-solid fa-boxes-stacked text-xl"></i>
                 </div>
-
-                <div class="flex items-center space-x-2 sm:space-x-3">
-                    <button id="installPwaBtn" onclick="installPWA()" class="hidden inline-flex items-center px-3 py-1.5 text-xs font-bold rounded-xl text-slate-950 bg-gradient-to-r from-emerald-400 to-brand-400 hover:from-emerald-300 hover:to-brand-300 transition shadow-lg shadow-emerald-500/20 animate-bounce">
-                        <i class="fa-solid fa-download mr-1.5"></i>
-                        <span>Install App</span>
-                    </button>
-
-                    <button onclick="window.print()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
-                        <i class="fa-solid fa-print text-brand-400 mr-1.5"></i>
-                        <span class="hidden sm:inline">Print / PDF</span>
-                    </button>
-                    <button onclick="exportToCSV()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-300 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
-                        <i class="fa-solid fa-file-excel text-emerald-400 mr-1.5"></i>
-                        <span class="hidden sm:inline">CSV</span>
-                    </button>
+                <div>
+                    <h1 class="text-lg font-bold text-white tracking-wide">Warehouse Tracker</h1>
+                    <p class="text-xs text-slate-400">Inventory & Realtime Stock System</p>
                 </div>
+            </div>
+            
+            <!-- Navigation Tabs -->
+            <div class="flex space-x-2 bg-slate-900 p-1.5 rounded-xl border border-slate-800">
+                <button onclick="switchTab('scan')" id="tabBtnScan" class="px-4 py-2 rounded-lg text-xs font-semibold bg-brand-500 text-slate-950 transition">
+                    <i class="fa-solid fa-plus-circle mr-1.5"></i> Entry Form
+                </button>
+                <button onclick="switchTab('history')" id="tabBtnHistory" class="px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition">
+                    <i class="fa-solid fa-list-check mr-1.5"></i> History & Logs
+                    <span id="historyBadgeCount" class="ml-1.5 px-2 py-0.5 rounded-full bg-slate-800 text-[10px] text-brand-400">0</span>
+                </button>
             </div>
         </div>
     </header>
 
-    <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 space-y-4">
-        
-        <!-- Quick Stats Dashboard -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 no-print">
-            <div class="bg-cardbg border border-cardborder rounded-2xl p-3 flex items-center space-x-3 shadow-sm">
-                <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center text-sm">
-                    <i class="fa-solid fa-arrow-down-left"></i>
-                </div>
+    <main class="max-w-7xl mx-auto px-4 mt-6">
+
+        <!-- Dashboard Stat Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl flex items-center justify-between">
                 <div>
-                    <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Total Inbound (In)</p>
-                    <p class="text-xs sm:text-sm font-bold text-emerald-400 font-mono" id="statInboundCount">0</p>
+                    <p class="text-xs text-slate-400 font-medium">Total Inbound Qty</p>
+                    <h3 id="statInboundCount" class="text-2xl font-extrabold text-emerald-400 font-mono mt-1">0</h3>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-emerald-500/10 text-emerald-400 flex items-center justify-center border border-emerald-500/20">
+                    <i class="fa-solid fa-arrow-down-left text-xl"></i>
                 </div>
             </div>
 
-            <div class="bg-cardbg border border-cardborder rounded-2xl p-3 flex items-center space-x-3 shadow-sm">
-                <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center text-sm">
-                    <i class="fa-solid fa-arrow-up-right"></i>
-                </div>
+            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl flex items-center justify-between">
                 <div>
-                    <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Total Outbound (Out)</p>
-                    <p class="text-xs sm:text-sm font-bold text-amber-400 font-mono" id="statOutboundCount">0</p>
+                    <p class="text-xs text-slate-400 font-medium">Total Outbound Qty</p>
+                    <h3 id="statOutboundCount" class="text-2xl font-extrabold text-amber-400 font-mono mt-1">0</h3>
+                </div>
+                <div class="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center border border-amber-500/20">
+                    <i class="fa-solid fa-arrow-up-right text-xl"></i>
                 </div>
             </div>
 
-            <div class="bg-cardbg border border-cardborder rounded-2xl p-3 flex items-center space-x-3 shadow-sm">
-                <div class="w-9 h-9 rounded-xl bg-blue-500/10 text-blue-400 flex items-center justify-center text-sm">
-                    <i class="fa-solid fa-warehouse"></i>
-                </div>
+            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-2xl flex items-center justify-between">
                 <div>
-                    <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Net Stock</p>
-                    <p class="text-xs sm:text-sm font-bold text-blue-400 font-mono" id="statNetStockCount">0</p>
+                    <p class="text-xs text-slate-400 font-medium">Current Net Stock</p>
+                    <h3 id="statNetStockCount" class="text-2xl font-extrabold text-brand-400 font-mono mt-1">0</h3>
                 </div>
-            </div>
-
-            <div class="bg-cardbg border border-cardborder rounded-2xl p-3 flex items-center space-x-3 shadow-sm">
-                <div class="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-400 flex items-center justify-center text-sm">
-                    <i class="fa-solid fa-layer-group"></i>
-                </div>
-                <div>
-                    <p class="text-[10px] text-slate-400 uppercase tracking-wider font-semibold">Total Entries</p>
-                    <p class="text-xs sm:text-sm font-bold text-purple-300 font-mono" id="historyBadgeCount">0</p>
+                <div class="w-12 h-12 rounded-xl bg-brand-500/10 text-brand-400 flex items-center justify-center border border-brand-500/20">
+                    <i class="fa-solid fa-cubes text-xl"></i>
                 </div>
             </div>
         </div>
 
-        <!-- Navigation Tabs -->
-        <div class="flex border-b border-cardborder bg-cardbg p-1 rounded-2xl shadow-md no-print space-x-1">
-            <button id="tabScanBtn" onclick="switchTab('scan')" class="flex-1 py-2.5 px-3 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 bg-brand-500/20 text-brand-400 border border-brand-500/40">
-                <i class="fa-solid fa-pen-to-square"></i>
-                <span>Invoice Entry</span>
-            </button>
-            <button id="tabHistoryBtn" onclick="switchTab('history')" class="flex-1 py-2.5 px-3 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-800/50">
-                <i class="fa-solid fa-list-check"></i>
-                <span>Invoice History</span>
-            </button>
-            <!-- NEW STOCK BUTTON -->
-            <button id="tabStockBtn" onclick="openStockWithPassword()" class="flex-1 py-2.5 px-3 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10">
-                <i class="fa-solid fa-boxes-stacked"></i>
-                <span>Current Stock 🔒</span>
-            </button>
-        </div>
-
-        <!-- Tab 1: Form Entry View -->
-        <div id="tabScanView" class="grid grid-cols-1 gap-5">
-            <form id="invoiceForm" onsubmit="saveInvoiceRecord(event)" class="bg-cardbg p-4 sm:p-5 rounded-2xl border border-cardborder shadow-xl space-y-4">
-                <div class="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <h2 class="font-bold text-slate-100 text-sm flex items-center" id="formHeaderTitle">
-                        <i class="fa-solid fa-pen-to-square text-brand-400 mr-2"></i>
-                        Invoice Entry Form
+        <!-- TAB 1: ENTRY FORM VIEW -->
+        <section id="tabScanView" class="max-w-2xl mx-auto">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <div class="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
+                    <h2 id="formHeaderTitle" class="text-base font-semibold text-white">
+                        <i class="fa-solid fa-pen-to-square text-brand-400 mr-2"></i>Invoice Entry Form
                     </h2>
-                    <div class="flex items-center space-x-2">
-                        <button type="button" id="cancelEditBtn" onclick="cancelEditing()" class="hidden text-xs text-amber-400 hover:text-amber-300 bg-amber-500/10 px-2 py-1 rounded-lg border border-amber-500/20 font-medium">
-                            <i class="fa-solid fa-xmark mr-1"></i>Cancel Edit
-                        </button>
-                        <span class="text-[11px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 font-mono">Live Sync Active</span>
-                    </div>
-                </div>
-
-                <!-- Entry Type Selector (NO DEFAULT SELECTED) -->
-                <div class="bg-slate-950 p-2.5 rounded-2xl border border-slate-800">
-                    <label class="block text-[11px] font-bold text-slate-400 mb-1.5 uppercase tracking-wider px-1">
-                        Select Entry Type <span class="text-red-400">*</span>
-                    </label>
-                    <div class="grid grid-cols-2 gap-2">
-                        <label class="cursor-pointer">
-                            <input type="radio" name="entryType" value="inbound" class="peer sr-only" required>
-                            <div class="p-2.5 rounded-xl border border-slate-800 bg-slate-900 peer-checked:bg-emerald-500/20 peer-checked:border-emerald-500 peer-checked:text-emerald-300 text-slate-400 text-xs font-bold flex items-center justify-center space-x-2 transition">
-                                <i class="fa-solid fa-arrow-down-left text-emerald-400"></i>
-                                <span>📥 Inbound (Stock In)</span>
-                            </div>
-                        </label>
-
-                        <label class="cursor-pointer">
-                            <input type="radio" name="entryType" value="outbound" class="peer sr-only">
-                            <div class="p-2.5 rounded-xl border border-slate-800 bg-slate-900 peer-checked:bg-amber-500/20 peer-checked:border-amber-500 peer-checked:text-amber-300 text-slate-400 text-xs font-bold flex items-center justify-center space-x-2 transition">
-                                <i class="fa-solid fa-arrow-up-right text-amber-400"></i>
-                                <span>📤 Outbound (Stock Out)</span>
-                            </div>
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Invoice Inputs -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Invoice / Challan No <span class="text-slate-500 text-[10px]">(Optional)</span></label>
-                        <input type="text" id="invoiceNumber" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="e.g. INV-2026-001">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-medium text-slate-400 mb-1">Date <span class="text-red-400">*</span></label>
-                        <input type="date" id="invoiceDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-brand-500 text-white font-mono">
-                    </div>
-                </div>
-
-                <!-- Dynamic Multiple Product Rows Container -->
-                <div class="space-y-3">
-                    <label class="block text-xs font-bold text-slate-300 uppercase tracking-wider">Product Items</label>
-                    <div id="productRowsContainer" class="space-y-2.5">
-                        <div class="product-row grid grid-cols-12 gap-2 items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80">
-                            <div class="col-span-7 sm:col-span-8">
-                                <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" autocomplete="off" required>
-                            </div>
-                            <div class="col-span-3 sm:col-span-3">
-                                <input type="number" min="1" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="Qty" required>
-                            </div>
-                            <div class="col-span-2 sm:col-span-1 text-right">
-                                <button type="button" onclick="removeProductRow(this)" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 flex items-center justify-center transition text-xs mx-auto">
-                                    <i class="fa-solid fa-trash-can"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="pt-1">
-                    <button type="button" onclick="addProductRow()" class="w-full py-2.5 bg-slate-800/80 hover:bg-slate-800 text-brand-400 border border-brand-500/30 rounded-xl font-semibold text-xs transition flex items-center justify-center space-x-2">
-                        <i class="fa-solid fa-plus text-xs"></i>
-                        <span>Product jukto korun (+ Add Product)</span>
+                    <button type="button" id="cancelEditBtn" onclick="cancelEditing()" class="hidden text-xs text-red-400 hover:underline">
+                        Cancel Edit
                     </button>
                 </div>
 
-                <button type="submit" id="submitBtn" class="w-full py-3 bg-gradient-to-r from-brand-600 to-emerald-500 hover:from-brand-500 hover:to-emerald-400 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-brand-500/20 transition flex items-center justify-center space-x-2">
-                    <i class="fa-solid fa-floppy-disk text-sm"></i>
-                    <span>Save & Sync Across Devices</span>
-                </button>
-            </form>
-        </div>
-
-        <!-- Tab 2: History List Table -->
-        <div id="tabHistoryView" class="hidden bg-cardbg rounded-2xl border border-cardborder p-4 shadow-xl">
-            <div class="flex items-center justify-between mb-4">
-                <h3 class="font-bold text-slate-100 text-sm flex items-center">
-                    <i class="fa-solid fa-list text-brand-400 mr-2"></i>
-                    Live Invoice History
-                </h3>
-            </div>
-            <div class="overflow-x-auto">
-                <table class="w-full text-left sheet-table text-xs">
-                    <thead>
-                        <tr class="bg-slate-900 text-slate-300 font-mono">
-                            <th class="p-2.5">Date</th>
-                            <th class="p-2.5">Type</th>
-                            <th class="p-2.5">Invoice #</th>
-                            <th class="p-2.5">Products & Qty</th>
-                            <th class="p-2.5 text-right">Total Qty</th>
-                            <th class="p-2.5 text-center no-print">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="historyTableBody">
-                        <tr>
-                            <td colspan="6" class="text-center py-6 text-slate-500">Loading data...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- TAB 3: REAL-TIME STOCK VIEW (ADMIN SECURED) -->
-        <div id="tabStockView" class="hidden bg-cardbg rounded-2xl border border-cardborder p-4 shadow-xl space-y-4">
-            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-                <h3 class="font-bold text-slate-100 text-sm flex items-center">
-                    <i class="fa-solid fa-boxes-stacked text-amber-400 mr-2"></i>
-                    Current Live Inventory & Stock Summary
-                </h3>
-                <div class="w-full sm:w-72">
-                    <div class="relative">
-                        <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
-                        <input type="text" id="stockSearchInput" onkeyup="renderStockTable()" placeholder="Search product..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400">
+                <form id="invoiceForm" onsubmit="saveInvoiceRecord(event)">
+                    <!-- Transaction Type Selection -->
+                    <div class="mb-5">
+                        <label class="block text-xs font-semibold text-slate-400 mb-2">Entry Type</label>
+                        <div class="grid grid-cols-2 gap-3">
+                            <label class="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-800 bg-slate-950/40 cursor-pointer hover:border-emerald-500/50 has-[:checked]:border-emerald-500 has-[:checked]:bg-emerald-500/10 transition">
+                                <input type="radio" name="entryType" value="inbound" checked class="accent-emerald-500">
+                                <span class="text-xs font-bold text-emerald-400"><i class="fa-solid fa-arrow-down-left mr-1"></i> Inbound (Stock In)</span>
+                            </label>
+                            <label class="flex items-center justify-center gap-2 p-3 rounded-xl border border-slate-800 bg-slate-950/40 cursor-pointer hover:border-amber-500/50 has-[:checked]:border-amber-500 has-[:checked]:bg-amber-500/10 transition">
+                                <input type="radio" name="entryType" value="outbound" class="accent-amber-500">
+                                <span class="text-xs font-bold text-amber-400"><i class="fa-solid fa-arrow-up-right mr-1"></i> Outbound (Stock Out)</span>
+                            </label>
+                        </div>
                     </div>
+
+                    <!-- Metadata (Invoice Number & Date) -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-5">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Invoice / Ref Number</label>
+                            <input type="text" id="invoiceNumber" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500" placeholder="e.g. INV-2024-001">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-400 mb-1">Date</label>
+                            <input type="date" id="invoiceDate" required class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-brand-500">
+                        </div>
+                    </div>
+
+                    <!-- Products List Builder -->
+                    <div class="mb-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <label class="block text-xs font-semibold text-slate-400">Products & Quantities</label>
+                            <button type="button" onclick="addProductRow()" class="text-xs text-brand-400 hover:text-brand-300 font-semibold flex items-center gap-1">
+                                <i class="fa-solid fa-plus"></i> Add Item
+                            </button>
+                        </div>
+                        
+                        <div id="productRowsContainer" class="space-y-2.5">
+                            <!-- Dynamic rows will be inserted here -->
+                        </div>
+                    </div>
+
+                    <!-- Datalist for Product Autocomplete -->
+                    <datalist id="productCatalogList"></datalist>
+
+                    <button type="submit" id="submitBtn" class="w-full bg-brand-500 hover:bg-brand-600 text-slate-950 font-bold py-3 rounded-xl transition text-xs flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-floppy-disk"></i> Save Transaction
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- TAB 2: HISTORY & LOGS VIEW -->
+        <section id="tabHistoryView" class="hidden">
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                    <h2 class="text-base font-semibold text-white">
+                        <i class="fa-solid fa-clock-rotate-left text-brand-400 mr-2"></i> Transaction History
+                    </h2>
+                    <button onclick="exportToCSV()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-medium px-4 py-2 rounded-xl transition text-xs flex items-center gap-2">
+                        <i class="fa-solid fa-file-csv text-emerald-400"></i> Export to CSV
+                    </button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-xs">
+                        <thead>
+                            <tr class="border-b border-slate-800 text-slate-400 uppercase text-[10px] tracking-wider">
+                                <th class="p-3">Date</th>
+                                <th class="p-3">Type</th>
+                                <th class="p-3">Invoice #</th>
+                                <th class="p-3">Products & Quantities</th>
+                                <th class="p-3 text-right">Total Qty</th>
+                                <th class="p-3 text-center no-print">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historyTableBody" class="divide-y divide-slate-800/60">
+                            <!-- Invoices will render dynamically -->
+                        </tbody>
+                    </table>
                 </div>
             </div>
-
-            <div class="overflow-x-auto">
-                <table class="w-full text-left sheet-table text-xs">
-                    <thead>
-                        <tr class="bg-slate-900 text-amber-400 font-mono">
-                            <th class="p-2.5">Product Name</th>
-                            <th class="p-2.5 text-center">Opening / Adjusted Stock</th>
-                            <th class="p-2.5 text-center">Inbound (+)</th>
-                            <th class="p-2.5 text-center">Outbound (-)</th>
-                            <th class="p-2.5 text-right">Current Available Stock</th>
-                            <th class="p-2.5 text-center no-print">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="stockTableBody">
-                        <tr>
-                            <td colspan="6" class="text-center py-6 text-slate-500">Loading stock data...</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
+        </section>
 
     </main>
 
-    <!-- ADMIN PASSWORD MODAL -->
-    <div id="passwordModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
-        <div class="bg-cardbg border border-cardborder rounded-2xl p-6 w-full max-w-sm shadow-2xl space-y-4">
-            <div class="text-center space-y-2">
-                <div class="w-12 h-12 rounded-full bg-amber-500/10 text-amber-400 mx-auto flex items-center justify-center text-xl">
-                    <i class="fa-solid fa-lock"></i>
-                </div>
-                <h3 class="font-bold text-white text-base">Admin Security Lock</h3>
-                <p class="text-xs text-slate-400">Enter Admin Password</p>
-            </div>
-            <input type="password" id="adminPasswordInput" placeholder="Enter password" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-amber-400 text-center font-mono">
-            <div class="flex space-x-2">
-                <button onclick="closePasswordModal()" class="flex-1 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-medium hover:bg-slate-700">Cancel</button>
-                <button onclick="verifyPassword()" class="flex-1 py-2 bg-amber-500 text-slate-950 rounded-xl text-xs font-bold hover:bg-amber-400">Unlock</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- PWA Auto Injector Script -->
+    <!-- JS Logic -->
     <script>
-        const manifestObj = {
-            "name": "Warehouse Invoice Manager",
-            "short_name": "WarehouseApp",
-            "start_url": "./",
-            "display": "standalone",
-            "background_color": "#080c14",
-            "theme_color": "#080c14",
-            "icons": [
-                { "src": "https://cdn-icons-png.flaticon.com/512/3652/3652191.png", "sizes": "192x192", "type": "image/png" },
-                { "src": "https://cdn-icons-png.flaticon.com/512/3652/3652191.png", "sizes": "512x512", "type": "image/png" }
-            ]
-        };
-        const manifestBlob = new Blob([JSON.stringify(manifestObj)], {type: 'application/json'});
-        const manifestURL = URL.createObjectURL(manifestBlob);
-        const manifestLink = document.createElement('link');
-        manifestLink.rel = 'manifest';
-        manifestLink.href = manifestURL;
-        document.head.appendChild(manifestLink);
-
-        if ('serviceWorker' in navigator) {
-            const swCode = `
-                self.addEventListener('install', e => self.skipWaiting());
-                self.addEventListener('activate', e => e.waitUntil(clients.claim()));
-                self.addEventListener('fetch', e => e.respondWith(fetch(e.request).catch(() => new Response('Offline'))));
-            `;
-            const swBlob = new Blob([swCode], { type: 'text/javascript' });
-            const swUrl = URL.createObjectURL(swBlob);
-            navigator.serviceWorker.register(swUrl).catch(err => console.log('SW Note:', err));
-        }
-
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            const btn = document.getElementById('installPwaBtn');
-            if (btn) btn.classList.remove('hidden');
-        });
-
-        function installPWA() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        document.getElementById('installPwaBtn').classList.add('hidden');
-                    }
-                    deferredPrompt = null;
-                });
-            }
-        }
-    </script>
-
-    <!-- Firebase Logic & Main Application Code -->
-    <script>
-        const ADMIN_PASSWORD = "akm"; // CHANGE YOUR ADMIN PASSWORD HERE
-        let isAdminUnlocked = false;
-
-        const initialProductsList = [
-            "Pegasus 15 SC — 50 ml", "Amistar Top — 500 ml", "Amistar Top — 50 ml", "Mortar 48 EC — 50 ml", 
-            "Ridomil Gold MZ 68 WG — 500 gm", "Splender / Splendor 80 WDG — 100 gm", "Splender / Splendor 80 WDG — 50 gm", 
-            "Splender / Splendor 80 WDG — 10 gm", "Cartapid 95 SP — 100 gm", "Dominator — 50 ml", "Marker 2.5 EC — 100 ml", 
-            "Topgate 57.5 WDG — 5 gm", "Anti Blight 72 WP — 100 gm", "Bendazim 50 WP — 500 gm", "Nacsumin 54 WP — 100 gm", 
-            "Starter 40 EC — 100 ml", "Starter 40 EC — 400 ml", "Binash 18 WP — 100 gm", "Vertimec 18 EC — 50 ml", 
-            "Tamprid 25 WDG — 10 gm", "Tilt 250 EC — 100 ml", "Tilt 250 EC — 50 ml", "American Zinc — 1 kg", 
-            "American NPKS — 500 gm", "Rupali — 500 gm", "SM-MHM Farmatte 20Ltr (Charger) — 20 L", "MHM Tiger Manual — 16 L", 
-            "Tata Wala Knapsack Sprayer — 18 L", "Lion Sprayer — 16 L", "Matale Charger — 18 L", "Petrol Pump Bison — BS30", 
-            "Top 10 (18L Dual Function) — 18 L", "Safa Top Gun (20L Dual Function) — 20 L", "SM-MHM Plant Mate Charger — 16 Ltr", 
-            "MHM Nagata Charger — 12 Ltr", "Hybrid F1 Maize Seed Rocky-55 — 1 kg", "iFarmer Hybrid (F1) Pumpkin — 10 gm", 
-            "iFarmer Hybrid (F1) Okra — 100 gm", "Japro-AA Cattle Feed — 500 gm", "Japro-AA Cattle Feed — 1 kg", 
-            "Meat Booster (Cattle) — 200 gm", "Meat Booster (Cattle) — 500 gm", "Meat Booster (Cattle) — 1 Kg", 
-            "ImmunPro (Poultry) — 200 gm", "ImmunPro (Poultry) — 500 gm", "ImmunPro (Poultry) — 1 Kg", "JapAqua (Fish) — 500 gm", 
-            "MHM TOP-10 SPRAYER-16Ltr (Flat Handle) — 16 L", "Jazz 80 Wp — 500 Gm", "Laser 10 Wp — 25 Gm", "Protozim — 50 MI", 
-            "Bingo — 100 Gm", "Magma — 1 Kg", "Bobita_F1 Hybrid — 10 gm", "Nilgiri 72 WP — 100gm", "Cleanboss 18 WP — 100gm", 
-            "Pumpkin Baromashi OP — 5 gm", "Egg Plant Parthib F1 — 5 gm", "Chili Fire wood (Shaheen) F1 — 5 gm", 
-            "Okra Maya 721 — 50 gm", "Pumpkin Ayraa-722 F1 — 20 gm", "Pumpkin Ayraa-722 F1 — 10 gm", "Pumpkin Jupiter 721 — 20 gm", 
-            "Pumpkin Jupiter 721 — 10 gm", "Seedling Tray-12 Pieces (Cell 72) — 12 pieces", "Coraza (Tebuconazole 25Ew) — 100MI", 
-            "Bitter Gourd Excel Super — 10Gm", "Sponge Gourd Monjolika — 10Gm", "Okra Tuna — 50Gm", "Bitter Gourd Sophia Plus — 10Gm", 
-            "Snake Gourd Avanti — 10Gm", "Eggplant Orisha King — 10Gm", "Wax Gourd Himaloya — 10Gm", "Tokyo Star Sprayer — 16L", 
-            "F1 Hybrid Chili (Agunjhora) — 5gm", "Bitter Gourd Papiya Super — 10 gm", "Bitter Gourd Papiya Super — 5 gm", 
-            "Bitter Gourd Papiya Super Gold — 10 gm", "Bitter Gourd Papiya Super Gold — 5 gm", "Bottle Gourd Rupali — 10 gm", 
-            "Cabbage ACI Busan — 10 gm", "Cabbage Merry Autumn — 10 gm", "Capsicum Astha — 5 gm", "Cucumber Salad — 10 gm", 
-            "knol Khol Knight 04 — 10 gm", "Okra Bullet Plus — 50 gm", "Pumpkin Phuket I — 10 gm", "Pumpkin Sweet Spot — 10 gm", 
-            "Radish BDX 829 — 100 gm can", "Radish Texas 35 — 100 gm Can", "Ridge Gourd Awesome — 10 gm", "Tomato Red Rock — 5 gm", 
-            "Tomato Scarlet — 5 gm", "Watermelon Black Beauty Plus — 10 gm", "Watermelon Thailand-2 — 50 gm", "Okra Super Hero — 50 gm", 
-            "Brinjal Purple Star — 5 gm", "Brinjal Green Globe — 5 gm", "Pumpkin Dhaka 2 — 10 gm", "Bitter Gourd Deepika — 10 gm", 
-            "Bitter Gourd Deepika — 5 gm", "Biomax M — 50 ml", "Biomax M — 100 ml", "Biomax M — 500 ml", "Matrixin Plus — 50 ml", 
-            "Matrixin Plus — 100 ml", "Matrixin Plus — 500 ml", "Antario — 50 gm", "Antario — 100 gm", "Trichomax — 250 gm", 
-            "Cuetrac — 25 gm", "Cuetrac — 10 gm", "Zonatrac — 25 gm", "Zonatrac — 10 gm", "Ash Gourd Akash — 5 gm", 
-            "Ash Gourd Super Star — 5 gm", "Seeder Machine", "Pumpkin Neptune 7216 — 20 gm", "Pumpkin Neptune 7216 — 10 gm", 
-            "Eggplant Goon Goon 721 — 5 gm", "Eggplant Green Light-722 — 5 gm", "Eggplant PK Momo — 5 gm", 
-            "Bitter Gourd Little Star 77 — 10 gm", "Bitter Gourd Little Star 77 — 5 gm", 
-            "Bottle Gourd F1 Hybrid Light Green (Alif-724) — 10 gm", "Bottle Gourd F1 Hybrid Light Green (Alif-724) — 5 gm", 
-            "iFarmer F1 Hybrid Sweet Pumpkin Kakli — 10 gm", "iFarmer F1 Hybrid Okra Queen — 100 gm", 
-            "iFarmer F1 Hybrid Sweet Pumpkin Lilaboti — 10 gm", "iFarmer F1 Hybrid Bitter Gourd Surma — 10 gm", 
-            "iFarmer F1 Hybrid Brinjal Sabuj Raja — 5 gm", "Ceranock — 1 pcs", "Kachi (IMIDA 12.5 + LAMDA 5SC) 50ML (Ifarmer) — 50ML", 
-            "Coraza (TEBUCONAZOLE 25 EW) 50ML (Ifarmer) — 50ML", "Coraza (TEBUCONAZOLE 25EW) 100ML (Ifarmer) — 100ML", 
-            "Coraza (TEBUCONAZOLE 25EW) 500ML (Ifarmer) — 500ML", "F1 Hybrid Maize seed Rocky 27 — 1 kg", "Tomato-Sour King — 5 Gm", 
-            "Pumpkin- Black Stone — 10 Gm", "Watermelon - Pakeeza — 1000 Seeds", "Bottle Gourd Asha — 10 gm", 
-            "Sponge Gourd Green Wood 721 — 10 gm", "Pumpkin Super Wood Black — 10 gm", "Bitter Gourd Tania Super 78 — 10 gm", 
-            "Cucumber Winter Malini 777 — 10 gm", "Cucumber Winter Malini 777 — 5 gm", "Beet Root Ruby Star 07 — 10 gm", 
-            "Sponge Gourd Hair 723 — 5 gm", "Eggplant Momo Plus — 5 gm", "Sponge Gourd Green Wood 721 — 5 gm", 
-            "Cucumber Winter Fresh 555 — 5 gm", "Indian Spinach Lal Pusti — 500 gm", "Abatin 1.8 EC — 50 ml", "Abatin 1.8 EC — 100 ml", 
-            "Abatin 1.8 EC — 400 ml", "Abatin 1.8 EC — 1 Liter", "Adclop 20 SL — 25 ml", "Adclop 20 SL — 100 ml", "Adclop 20 SL — 400 ml", 
-            "Marker 2.5 EC — 50 ml", "Mortar 48 EC — 100 ml", "Mortar 48 EC — 250 ml", "Mortar 48 EC — 400 ml", "Cartapid 95 SP — 10g", 
-            "Cartapid 95 SP — 50g", "Starter 40 EC — 50 ml", "Dominator 20 SC — 25 ml", "Dominator 20 SC — 100 ml", "Maxpro 40 WDG — 30g", 
-            "Fenzate 25 EC — 25 ml", "Fenzate 25 EC — 50 ml", "Fenzate 25 EC — 100 ml", "Fenzate 25 EC — 400 ml", "Antiborer 40 WDG — 10g", 
-            "Antiborer 40 WDG — 30g", "Topgate 57.5 WDG — 30g", "Grip 52.5 WDG — 50g", "Grip 52.5 WDG — 100g", "Bendazim 50 WP — 50g", 
-            "Combi-2 30 EC — 100ml", "Combi-2 30 EC — 400ml", "Fulimain 60 WP — 100g", "Aiker 20 SL — 50ml", "Nacsumin 54 WP — 25g", 
-            "Tipoff 28 SC — 100ml", "Usched 20 SL — 100ml", "Usched 20 SL — 500ml", "Usched 20 SL — 1 Liter", "Usched 20 SL — 5 Liter", 
-            "Nac Salt 84 SL — 100ml", "Nac Salt 84 SL — 400ml", "Crops Care — 500ml", "Crops Care — 1 Liter", "Ripen-15 — 50ml", 
-            "Ripen-15 — 500ml", "Rooton — 2kg", "Nac Gold — 50ml", "Nac Gold — 100ml", "Nac Gold — 250ml", "Nac Gold — 500ml", 
-            "Paclo Nac 25 SC — 100ml", "National Boron (15%) — 1kg", "American NPKS — 1kg", "Sonar Dana — 25kg", "National Gypsum — 5kg", 
-            "Starlux 100 ml (Ifarmer) — 100 ml", "Starlux 500 ml (Ifarmer) — 500 ml", "Buster 10 EC — 50 ml", "Buster 10 EC — 100 ml", 
-            "Buster 10 EC — 400 ml", "NAC Rubby — 100ml", "National Potash — 250g", "Coro clean 500 EC — 100 ml", "Coro clean 500 EC — 400 ml", 
-            "Hinotap 50 SP — 50 gm", "Hinotap 50 SP — 100 gm", "Hinotap 50 SP — 250 gm", "Cure 25 EC — 50 ml", "Cure 25 EC — 100 ml", 
-            "Emaron 50 WDG — 10 gm", "Emaron 50 WDG — 30 gm", "Pyriben 20 WP — 50 gm", "Pyriben 20 WP — 100 gm", "Alcor 56% — 1 kg", 
-            "Sunphonate 70 WP — 50 gm", "Sunphonate 70 WP — 100 gm", "Sunphonate 70 WP — 500 gm"
+        // Updated Product Initial Stock Inventory List
+        const initialProductsInventory = [
+            { product: "Pegasus 15 SC 50 ml", quantity: 20 },
+            { product: "Amistar Top 500 ml", quantity: 180 },
+            { product: "Mortar 48 EC 50 ml", quantity: 141 },
+            { product: "Ridomil Gold MZ 68 WG (500 gm)", quantity: 38 },
+            { product: "American zinc 1 kg", quantity: 5 },
+            { product: "Splender 80wdg 100 gm", quantity: 9 },
+            { product: "American NPKS 500 gm", quantity: 2 },
+            { product: "Splender 80wdg 50 gm", quantity: 43 },
+            { product: "Cartapid 95 SP 100 gm", quantity: 18 },
+            { product: "Dominator 50 ml", quantity: 39 },
+            { product: "Marker 2.5 Ec 100ml", quantity: 7 },
+            { product: "Splender 80wdg 10 gm", quantity: 8 },
+            { product: "Rupali-500gm", quantity: 14 },
+            { product: "Bendazim 50 WP 500gm", quantity: 8 },
+            { product: "Nacsumin 54wp 100gm", quantity: 14 },
+            { product: "Starter 40 EC 100ml", quantity: 31 },
+            { product: "Starter 40 EC 400ml", quantity: 11 },
+            { product: "Binash 18 WP 100 gm", quantity: 120 },
+            { product: "SM-MHM Farmatte 20Ltr (Charger)", quantity: 9 },
+            { product: "Back Pack-18L", quantity: 2 },
+            { product: "Matale Charger-18L", quantity: 37 },
+            { product: "Amistar Top 50 ml", quantity: 16 },
+            { product: "Petrol pump Bison- BS30 Pump", quantity: 2 },
+            { product: "Tilt 250EC-100ml", quantity: 12 },
+            { product: "Tilt 250EC-50 ml", quantity: 11 },
+            { product: "SM-MHM -Plant Mate Charger-16L", quantity: 1 },
+            { product: "Hybrid F1 Maize Seed Rocky-55 (1 kg)", quantity: 23 },
+            { product: "Top 10 18L (Dual Function)", quantity: 6 },
+            { product: "Safa Top Gun 20L(Dual Function)", quantity: 1 },
+            { product: "Trigger Sprayer Sx 200 E", quantity: 4400 },
+            { product: "Vertimec 18 EC 50ml", quantity: 19 },
+            { product: "Tamprid 25 WDG 10gm", quantity: 116 },
+            { product: "iFarmer Hybrid (F1) Pumpkin - 10gm", quantity: 5 },
+            { product: "iFarmer Hybrid (F1) Okra- 100gm", quantity: 300 },
+            { product: "Japro-AA (Cattle)_500 gm", quantity: 35 },
+            { product: "Japro-AA (Cattle)_1 Kg", quantity: 6 },
+            { product: "Meat Booster (Cattle)_200 gm", quantity: 55 },
+            { product: "Meat Booster (Cattle)_500 gm", quantity: 20 },
+            { product: "Meat Booster (Cattle)_1 Kg", quantity: 6 },
+            { product: "ImmunPro (Poultry)_200 gm", quantity: 6 },
+            { product: "ImmunPro (Poultry)_500 gm", quantity: 18 },
+            { product: "ImmunPro (Poultry)_1 Kg", quantity: 3 },
+            { product: "JapAqua (Fish)_500 gm", quantity: 7 },
+            { product: "MHM Chashi Charger 20Ltr", quantity: 20 },
+            { product: "Jazz 80 Wp_500 Gm", quantity: 1 },
+            { product: "Laser 10 Wp_25 Gm", quantity: 5 },
+            { product: "Protozim_50 Ml", quantity: 20 },
+            { product: "Bingo_100 Gm", quantity: 24 },
+            { product: "Magma_1 Kg", quantity: 7 },
+            { product: "Bobita_F1 Hybrid_10 gm", quantity: 5 },
+            { product: "Cleanboss 18 WP_100gm", quantity: 93 },
+            { product: "Pumpkin Baromashi OP_5 gm", quantity: 4 },
+            { product: "Egg Plant Parthib F1_5 gm", quantity: 3 },
+            { product: "Chili Fire wood (Shaheen) F1_5 gm", quantity: 46 },
+            { product: "Okra Mayaa 721_50 gm", quantity: 28 },
+            { product: "Pumpkin Ayraa-722 F1_20 gm", quantity: 46 },
+            { product: "Pumpkin Ayraa-722 F1_10 gm", quantity: 45 },
+            { product: "Pumpkin Jupiter 721_20 gm", quantity: 45 },
+            { product: "Pumpkin Jupiter 721_10 gm", quantity: 45 },
+            { product: "Seedling Tray-12 Pieces (Cell 72)", quantity: 3 },
+            { product: "Coraza (Tebuconazole 25Ew) 100Ml", quantity: 13 },
+            { product: "Bitter Gourd Excel Super 10Gm", quantity: 40 },
+            { product: "Sponge Gourd Monjolika 10Gm", quantity: 57 },
+            { product: "Okra Tonuja 50Gm", quantity: 88 },
+            { product: "Bitter Gourd Sophia Plus 10Gm", quantity: 49 },
+            { product: "Snake Gourd Avanti 10Gm", quantity: 79 },
+            { product: "Eggplant Orisha King 10Gm", quantity: 7 },
+            { product: "Wax Gourd Himaloya 10Gm", quantity: 20 },
+            { product: "F1 Hybrid Chili (Agunjhora)- 5gm", quantity: 711 },
+            { product: "Bitter Gourd Papiya Super Gold 10 gm", quantity: 109 },
+            { product: "Bitter Gourd Papiya Super Gold 5 gm", quantity: 124 },
+            { product: "Cabbage Merry Autumn 10 gm", quantity: 24 },
+            { product: "Capsicum Astha 5 gm", quantity: 6 },
+            { product: "Cucumber Salad 10 gm", quantity: 118 },
+            { product: "knol Khol Knight 04 10 gm", quantity: 6 },
+            { product: "Tomato Red Rock 5 gm", quantity: 34 },
+            { product: "Tomato Scarlet 5 gm", quantity: 37 },
+            { product: "Pumpkin Dhaka 2 10 gm", quantity: 7 },
+            { product: "Biomax M 50 ml", quantity: 13 },
+            { product: "Biomax M 100 ml", quantity: 2 },
+            { product: "Biomax M 500 ml", quantity: 8 },
+            { product: "Matrixin Plus 50 ml", quantity: 7 },
+            { product: "Matrixin Plus 100 ml", quantity: 17 },
+            { product: "Matrixin Plus 500 ml", quantity: 8 },
+            { product: "Antario 50 gm", quantity: 63 },
+            { product: "Antario 100 gm", quantity: 40 },
+            { product: "Trichomax 250 gm", quantity: 70 },
+            { product: "Cuetrac 25 gm", quantity: 37 },
+            { product: "Cuetrac 10 gm", quantity: 50 },
+            { product: "Zonatrac 25 gm", quantity: 64 },
+            { product: "Zonatrac 10 gm", quantity: 16 },
+            { product: "Ash Gourd Akash 5 gm", quantity: 1 },
+            { product: "Ash Gourd Super Star 5 gm", quantity: 5 },
+            { product: "Seeder Machine", quantity: 6 },
+            { product: "Pumpkin Neptune 7216_20 gm", quantity: 36 },
+            { product: "Pumpkin Neptune 7216_10 gm", quantity: 45 },
+            { product: "Eggplant Goon Goon 721_5 gm", quantity: 44 },
+            { product: "Eggplant Green Light-722_5 gm", quantity: 35 },
+            { product: "Eggplant PK Momo_5 gm", quantity: 39 },
+            { product: "Bitter Gourd Little Star 77_10 gm", quantity: 41 },
+            { product: "Bitter Gourd Little Star 77_5 gm", quantity: 44 },
+            { product: "Bottle Gourd F1 Hybrid Light Green (Alif-724)_10 gm", quantity: 10 },
+            { product: "Bottle Gourd F1 Hybrid Light Green (Alif-724)_5 gm", quantity: 15 },
+            { product: "iFarmer F1 Hybrid Sweet Pumpkin Kakli – 10 gm", quantity: 30 },
+            { product: "iFarmer F1 Hybrid Okra Queen – 100 gm", quantity: 564 },
+            { product: "iFarmer F1 Hybrid Sweet Pumpkin Lilaboti – 10 gm", quantity: 598 },
+            { product: "iFarmer F1 Hybrid Bitter Gourd Surma – 10 gm", quantity: 234 },
+            { product: "iFarmer F1 Hybrid Brinjal Sabuj Raja – 5 gm", quantity: 679 },
+            { product: "Ceranock 1 pcs", quantity: 1 },
+            { product: "Kachi (IMIDA 12.5 + LAMDA 5SC) 50ML(Ifarmer)", quantity: 486 },
+            { product: "Coraza (TEBUCONAZOLE 25 EW) 50ML(Ifarmer)", quantity: 444 },
+            { product: "Coraza (TEBUCONAZOLE 25EW) 100ML(Ifarmer)", quantity: 53 },
+            { product: "Coraza (TEBUCONAZOLE 25EW) 500ML(Ifarmer)", quantity: 1 },
+            { product: "F1 Hybrid Maize seed Rocky 27 (1 kg)", quantity: 2057 },
+            { product: "Tomato- Sour King 5 Gm", quantity: 9 },
+            { product: "Pumpkin- Black Stone 10 Gm", quantity: 6 },
+            { product: "Watermelon - Pakeeza 1000 Seeds", quantity: 10 },
+            { product: "Bottle Gourd Asha 10 gm", quantity: 18 },
+            { product: "Sponge Gourd Green Wood 721_10 gm", quantity: 6 },
+            { product: "Pumpkin Super Wood Black 10 gm", quantity: 9 },
+            { product: "Bitter Gourd Tania Super 78_10 gm", quantity: 9 },
+            { product: "Cucumber Winter Malini 777_10 gm", quantity: 8 },
+            { product: "Cucumber Winter Malini 777_5 gm", quantity: 9 },
+            { product: "Beet Root Ruby Star 07_10 gm", quantity: 1 },
+            { product: "Sponge Gourd Parul 723_5 gm", quantity: 3 },
+            { product: "Eggplant Momo Plus_5 gm", quantity: 10 },
+            { product: "Sponge Gourd Green Wood 721_5 gm", quantity: 4 },
+            { product: "Cucumber Winter Fresh 555_5 gm", quantity: 8 },
+            { product: "Indian Spinach Lal Pusti 500 gm", quantity: 4 },
+            { product: "Abatin 1.8 EC 100 ml", quantity: 27 },
+            { product: "Abatin 1.8 EC 400 ml", quantity: 3 },
+            { product: "Abatin 1.8 EC 1 Liter", quantity: 4 },
+            { product: "Adclop 20 SL 100 ml", quantity: 11 },
+            { product: "Adclop 20 SL 400 ml", quantity: 10 },
+            { product: "Marker 2.5 EC 50 ml", quantity: 14 },
+            { product: "Mortar 48 EC 250 ml", quantity: 18 },
+            { product: "Mortar 48 EC 400 ml", quantity: 57 },
+            { product: "Cartaprid 95 SP 10g", quantity: 6 },
+            { product: "Cartaprid 95 SP 50g", quantity: 126 },
+            { product: "Starter 40 EC 50 ml", quantity: 1 },
+            { product: "Dominator 20 SC 25 ml", quantity: 7 },
+            { product: "Dominator 20 SC 100 ml", quantity: 40 },
+            { product: "Maxpro 40 WDG 30g", quantity: 20 },
+            { product: "Fenzate 25 EC 25 ml", quantity: 35 },
+            { product: "Fenzate 25 EC 50 ml", quantity: 45 },
+            { product: "Fenzate 25 EC 100 ml", quantity: 21 },
+            { product: "Fenzate 25 EC 400 ml", quantity: 12 },
+            { product: "Antiborer 40 WDG 10g", quantity: 15 },
+            { product: "Antiborer 40 WDG 30g", quantity: 38 },
+            { product: "Topgate 57.5 WDG 30g", quantity: 18 },
+            { product: "Grip 52.5 WDG 50g", quantity: 270 },
+            { product: "Grip 52.5 WDG 100g", quantity: 17 },
+            { product: "Bendazim 50 WP 50g", quantity: 12 },
+            { product: "Combi-2 30 EC 100ml", quantity: 17 },
+            { product: "Combi-2 30 EC 400ml", quantity: 12 },
+            { product: "Fulimain 60 WP 100g", quantity: 28 },
+            { product: "Aiker 20 SL 50ml", quantity: 20 },
+            { product: "Nacsumin 54 WP 25g", quantity: 13 },
+            { product: "Nacsumin 54 WP 50g", quantity: 27 },
+            { product: "Nacsumin 54 WP 500g", quantity: 10 },
+            { product: "Tipoff 28 SC 50ml", quantity: 33 },
+            { product: "Tipoff 28 SC 100ml", quantity: 39 },
+            { product: "Usched 20 SL 100ml", quantity: 99 },
+            { product: "Usched 20 SL 500ml", quantity: 85 },
+            { product: "Usched 20 SL 1 Liter", quantity: 11 },
+            { product: "Usched 20 SL 5 Liter", quantity: 24 },
+            { product: "Nac Salt 84 SL 100ml", quantity: 15 },
+            { product: "Nac Salt 84 SL 400ml", quantity: 10 },
+            { product: "Crops Care 500ml", quantity: 31 },
+            { product: "Crops Care 1 Liter", quantity: 5 },
+            { product: "Ripen-15 50ml", quantity: 30 },
+            { product: "Ripen-15 500ml", quantity: 11 },
+            { product: "Rooton 2kg", quantity: 9 },
+            { product: "Nac Gold 50ml", quantity: 30 },
+            { product: "Nac Gold 100ml", quantity: 6 },
+            { product: "Nac Gold 250ml", quantity: 10 },
+            { product: "Nac Gold 500ml", quantity: 5 },
+            { product: "Paclo Nac 25 SC 100ml", quantity: 13 },
+            { product: "National Boron (15%) 1kg", quantity: 23 },
+            { product: "American NPKS 1kg", quantity: 1 },
+            { product: "Sonar Dana 25kg", quantity: 2 },
+            { product: "National Gypsum 5kg", quantity: 1 },
+            { product: "Starlux 100 ml (Ifarmer)", quantity: 75 },
+            { product: "Starlux 500 ml (Ifarmer)", quantity: 13 },
+            { product: "Buster 10 EC 50 ml", quantity: 205 },
+            { product: "Buster 10 EC 100 ml", quantity: 197 },
+            { product: "Buster 10 EC 400 ml", quantity: 55 },
+            { product: "NAC Rubby100ml", quantity: 12 },
+            { product: "National Potash 250g", quantity: 19 },
+            { product: "Coro clean 500 EC 100 ml", quantity: 90 },
+            { product: "Coro clean 500 EC 400 ml", quantity: 29 },
+            { product: "Hinotap 50 SP 50 gm", quantity: 131 },
+            { product: "Hinotap 50 SP 100 gm", quantity: 69 },
+            { product: "Hinotap 50 SP 250 gm", quantity: 19 },
+            { product: "Cure 25 EC 50 ml", quantity: 28 },
+            { product: "Cure 25 EC 100 ml", quantity: 21 },
+            { product: "Emaron 50 WDG 10 gm", quantity: 176 },
+            { product: "Emaron 50 WDG 30 gm", quantity: 42 },
+            { product: "Pyriben 20 WP 50 gm", quantity: 87 },
+            { product: "Pyriben 20 WP 100 gm", quantity: 1 },
+            { product: "Alcor 56% 1 kg", quantity: 3 },
+            { product: "Sunphonate 70 WP 50 gm", quantity: 40 },
+            { product: "Sunphonate 70 WP 100 gm", quantity: 27 },
+            { product: "Sunphonate 70 WP 500 gm", quantity: 10 },
+            { product: "MHM Samsong(New) Charger 18Ltr (LITHIUM BATTERY)", quantity: 3 },
+            { product: "MHM Horse Power -18 Ltr (Lithium Battery)", quantity: 48 },
+            { product: "Kachi (IMIDA 12.5 + LAMDA 5SC) 50ML(Ifarmer) 1pc", quantity: 3 },
+            { product: "Kachi (IMIDA 12.5 + LAMDA 5SC) 100ML(Ifarmer) 1pc", quantity: 6 },
+            { product: "Coraza (TEBUCONAZOLE 25 EW) 50ML(Ifarmer) 1pc", quantity: 15 },
+            { product: "Coraza (TEBUCONAZOLE 25EW) 100ML(Ifarmer) 1pc", quantity: 21 },
+            { product: "MHM King Charger 22Ltr (LITHIUM BATTERY)", quantity: 5 }
         ];
+
+        const initialProductsList = initialProductsInventory.map(item => item.product);
 
         const firebaseConfig = {
             apiKey: "AIzaSyClCasMqkv7_OqLZmWe-UC4eeA6ShP9pLk",
@@ -513,23 +423,16 @@
         let db = null;
         let invoicesRef = null;
         let productsRef = null;
-        let openingStockRef = null;
-        
         let invoicesList = [];
-        let openingStockMap = {};
         let dbCatalogSet = new Set();
         let fullCatalogSet = new Set(initialProductsList);
         let editingInvoiceId = null;
-
-        // Set default date to today
-        document.getElementById('invoiceDate').valueAsDate = new Date();
 
         try {
             firebase.initializeApp(firebaseConfig);
             db = firebase.database();
             invoicesRef = db.ref('invoices');
             productsRef = db.ref('products');
-            openingStockRef = db.ref('openingStock');
 
             productsRef.on('value', (snapshot) => {
                 const data = snapshot.val();
@@ -542,11 +445,6 @@
                 rebuildProductCatalog();
             });
 
-            openingStockRef.on('value', (snapshot) => {
-                openingStockMap = snapshot.val() || {};
-                renderStockTable();
-            });
-
             invoicesRef.on('value', (snapshot) => {
                 const data = snapshot.val();
                 invoicesList = [];
@@ -557,15 +455,14 @@
                 }
                 updateDashboardStats();
                 renderHistoryTable();
-                renderStockTable();
                 rebuildProductCatalog();
             });
         } catch (error) {
-            console.error("Firebase Init Error:", error);
+            console.error("Firebase Config Error:", error);
         }
 
         function rebuildProductCatalog() {
-            fullCatalogSet = new Set([...initialProductsList, ...dbCatalogSet, ...Object.keys(openingStockMap)]);
+            fullCatalogSet = new Set([...initialProductsList, ...dbCatalogSet]);
             invoicesList.forEach(inv => {
                 if (inv.items && Array.isArray(inv.items)) {
                     inv.items.forEach(i => { if (i.product) fullCatalogSet.add(i.product.toString().trim()); });
@@ -583,16 +480,16 @@
             datalist.innerHTML = sortedList.map(item => `<option value="${item}">${item}</option>`).join('');
         }
 
-        function addProductRow(productName = '', qty = '') {
+        function addProductRow(productVal = '', qtyVal = '') {
             const container = document.getElementById('productRowsContainer');
             const rowDiv = document.createElement('div');
             rowDiv.className = "product-row grid grid-cols-12 gap-2 items-center bg-slate-950/60 p-2.5 rounded-xl border border-slate-800/80";
             rowDiv.innerHTML = `
                 <div class="col-span-7 sm:col-span-8">
-                    <input type="text" list="productCatalogList" value="${productName}" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" placeholder="Product name (type to search)" autocomplete="off" required>
+                    <input type="text" list="productCatalogList" class="product-name w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white" value="${productVal}" placeholder="Product name (type to search)" autocomplete="off" required>
                 </div>
                 <div class="col-span-3 sm:col-span-3">
-                    <input type="number" min="1" value="${qty}" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" placeholder="Qty" required>
+                    <input type="number" min="1" class="product-qty w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-brand-500 text-white font-mono" value="${qtyVal}" placeholder="Qty" required>
                 </div>
                 <div class="col-span-2 sm:col-span-1 text-right">
                     <button type="button" onclick="removeProductRow(this)" class="w-8 h-8 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 flex items-center justify-center transition text-xs mx-auto">
@@ -603,319 +500,197 @@
             container.appendChild(rowDiv);
         }
 
-        function removeProductRow(btn) {
-            const rows = document.querySelectorAll('.product-row');
-            if (rows.length > 1) {
-                btn.closest('.product-row').remove();
+        function removeProductRow(button) {
+            const container = document.getElementById('productRowsContainer');
+            if (container.children.length > 1) {
+                button.closest('.product-row').remove();
             } else {
                 alert("At least one product item is required!");
             }
         }
 
-        function saveInvoiceRecord(e) {
-            e.preventDefault();
+        function saveInvoiceRecord(event) {
+            event.preventDefault();
+            if (!invoicesRef) return;
 
-            const selectedType = document.querySelector('input[name="entryType"]:checked');
-            if (!selectedType) {
-                alert("Doya kore Inbound othoba Outbound select korun!");
-                return;
-            }
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
 
-            const entryType = selectedType.value;
+            const entryType = document.querySelector('input[name="entryType"]:checked').value;
             const invoiceNumber = document.getElementById('invoiceNumber').value.trim();
-            const date = document.getElementById('invoiceDate').value;
+            const invoiceDate = document.getElementById('invoiceDate').value;
 
-            const rows = document.querySelectorAll('.product-row');
+            const rowElements = document.querySelectorAll('.product-row');
             const items = [];
-            let totalQty = 0;
 
-            rows.forEach(row => {
+            rowElements.forEach(row => {
                 const name = row.querySelector('.product-name').value.trim();
-                const qty = parseInt(row.querySelector('.product-qty').value, 10);
+                const qty = parseInt(row.querySelector('.product-qty').value) || 0;
                 if (name && qty > 0) {
-                    items.push({ product: name, qty: qty });
-                    totalQty += qty;
-                    // Auto save new product to catalog
-                    productsRef.push(name);
+                    items.push({ product: name, quantity: qty });
+                    if (!fullCatalogSet.has(name) && productsRef) {
+                        productsRef.push(name);
+                        fullCatalogSet.add(name);
+                    }
                 }
             });
 
             if (items.length === 0) {
-                alert("At least one valid product item is required!");
+                alert("Please add at least one valid product!");
+                submitBtn.disabled = false;
                 return;
             }
 
-            const record = {
-                entryType: entryType,
-                invoiceNumber: invoiceNumber || 'N/A',
-                date: date,
+            const recordData = {
+                type: entryType,
+                number: invoiceNumber || 'N/A',
+                date: invoiceDate,
                 items: items,
-                totalQty: totalQty,
-                timestamp: firebase.database.ServerValue.TIMESTAMP
+                timestamp: Date.now()
             };
 
-            if (editingInvoiceId) {
-                invoicesRef.child(editingInvoiceId).set(record, (err) => {
-                    if (!err) {
-                        alert("Invoice updated successfully!");
-                        cancelEditing();
-                    }
-                });
-            } else {
-                invoicesRef.push(record, (err) => {
-                    if (!err) {
-                        alert("Invoice saved and synced successfully!");
-                        resetForm();
-                    }
-                });
-            }
-        }
+            const savePromise = editingInvoiceId 
+                ? invoicesRef.child(editingInvoiceId).set(recordData)
+                : invoicesRef.push(recordData);
 
-        function resetForm() {
-            document.getElementById('invoiceForm').reset();
-            document.getElementById('invoiceDate').valueAsDate = new Date();
-            document.getElementById('productRowsContainer').innerHTML = '';
-            addProductRow();
-        }
-
-        function switchTab(tab) {
-            document.getElementById('tabScanView').classList.add('hidden');
-            document.getElementById('tabHistoryView').classList.add('hidden');
-            document.getElementById('tabStockView').classList.add('hidden');
-
-            document.getElementById('tabScanBtn').className = "flex-1 py-2.5 px-3 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-800/50";
-            document.getElementById('tabHistoryBtn').className = "flex-1 py-2.5 px-3 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-slate-400 hover:text-white hover:bg-slate-800/50";
-            document.getElementById('tabStockBtn').className = "flex-1 py-2.5 px-3 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 text-amber-400 hover:text-amber-300 hover:bg-amber-500/10";
-
-            if (tab === 'scan') {
-                document.getElementById('tabScanView').classList.remove('hidden');
-                document.getElementById('tabScanBtn').className = "flex-1 py-2.5 px-3 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 bg-brand-500/20 text-brand-400 border border-brand-500/40";
-            } else if (tab === 'history') {
-                document.getElementById('tabHistoryView').classList.remove('hidden');
-                document.getElementById('tabHistoryBtn').className = "flex-1 py-2.5 px-3 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 bg-brand-500/20 text-brand-400 border border-brand-500/40";
-            } else if (tab === 'stock') {
-                document.getElementById('tabStockView').classList.remove('hidden');
-                document.getElementById('tabStockBtn').className = "flex-1 py-2.5 px-3 rounded-xl font-medium text-xs transition flex items-center justify-center space-x-2 bg-amber-500/20 text-amber-400 border border-amber-500/40";
-            }
-        }
-
-        // PASSWORD SECURITY LOGIC
-        function openStockWithPassword() {
-            if (isAdminUnlocked) {
-                switchTab('stock');
-            } else {
-                document.getElementById('passwordModal').classList.remove('hidden');
-                document.getElementById('adminPasswordInput').focus();
-            }
-        }
-
-        function closePasswordModal() {
-            document.getElementById('passwordModal').classList.add('hidden');
-            document.getElementById('adminPasswordInput').value = '';
-        }
-
-        function verifyPassword() {
-            const pass = document.getElementById('adminPasswordInput').value;
-            if (pass === ADMIN_PASSWORD) {
-                isAdminUnlocked = true;
-                closePasswordModal();
-                switchTab('stock');
-            } else {
-                alert("Incorrect Password! Access Denied.");
-            }
-        }
-
-        function updateDashboardStats() {
-            let inbound = 0;
-            let outbound = 0;
-
-            invoicesList.forEach(inv => {
-                const qty = parseInt(inv.totalQty, 10) || 0;
-                if (inv.entryType === 'inbound') inbound += qty;
-                else if (inv.entryType === 'outbound') outbound += qty;
+            savePromise.then(() => {
+                alert("Saved & synced successfully!");
+                cancelEditing();
+            }).finally(() => {
+                submitBtn.disabled = false;
             });
-
-            document.getElementById('statInboundCount').textContent = inbound;
-            document.getElementById('statOutboundCount').textContent = outbound;
-            document.getElementById('statNetStockCount').textContent = (inbound - outbound);
-            document.getElementById('historyBadgeCount').textContent = invoicesList.length;
         }
 
-        function renderHistoryTable() {
-            const tbody = document.getElementById('historyTableBody');
-            if (invoicesList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-500">No invoice records found.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = invoicesList.slice().reverse().map(inv => {
-                const isInbound = inv.entryType === 'inbound';
-                const typeBadge = isInbound 
-                    ? '<span class="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 text-[10px] font-bold">📥 Inbound</span>'
-                    : '<span class="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[10px] font-bold">📤 Outbound</span>';
-
-                let itemsSummary = '';
-                if (inv.items && Array.isArray(inv.items)) {
-                    itemsSummary = inv.items.map(i => `${i.product} (x${i.qty})`).join(', ');
-                } else if (inv.product) {
-                    itemsSummary = `${inv.product} (x${inv.qty || 1})`;
-                }
-
-                return `
-                    <tr class="hover:bg-slate-800/40 border-b border-slate-800/60">
-                        <td class="p-2.5 font-mono text-slate-300">${inv.date || '-'}</td>
-                        <td class="p-2.5">${typeBadge}</td>
-                        <td class="p-2.5 font-mono text-slate-300">${inv.invoiceNumber || 'N/A'}</td>
-                        <td class="p-2.5 text-slate-200">${itemsSummary}</td>
-                        <td class="p-2.5 text-right font-mono font-bold ${isInbound ? 'text-emerald-400' : 'text-amber-400'}">${inv.totalQty}</td>
-                        <td class="p-2.5 text-center no-print">
-                            <button onclick="editInvoice('${inv.id}')" class="text-blue-400 hover:text-blue-300 mr-2"><i class="fa-solid fa-pen"></i></button>
-                            <button onclick="deleteInvoice('${inv.id}')" class="text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i></button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        // REAL-TIME STOCK TAB CALCULATION & RENDER
-        function renderStockTable() {
-            const tbody = document.getElementById('stockTableBody');
-            const searchFilter = (document.getElementById('stockSearchInput')?.value || '').toLowerCase();
-
-            let stockMap = {};
-
-            // Initialize all catalog products
-            fullCatalogSet.forEach(pName => {
-                if (pName) {
-                    stockMap[pName] = { opening: openingStockMap[sanitizeKey(pName)] || 0, inQty: 0, outQty: 0 };
-                }
-            });
-
-            // Calculate Inbound/Outbound from Live Invoices
-            invoicesList.forEach(inv => {
-                const type = inv.entryType;
-                if (inv.items && Array.isArray(inv.items)) {
-                    inv.items.forEach(i => {
-                        const name = i.product;
-                        const qty = parseInt(i.qty, 10) || 0;
-                        if (!stockMap[name]) stockMap[name] = { opening: openingStockMap[sanitizeKey(name)] || 0, inQty: 0, outQty: 0 };
-                        if (type === 'inbound') stockMap[name].inQty += qty;
-                        else if (type === 'outbound') stockMap[name].outQty += qty;
-                    });
-                }
-            });
-
-            const keys = Object.keys(stockMap).filter(name => name.toLowerCase().includes(searchFilter)).sort();
-
-            if (keys.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-500">No matching products found.</td></tr>';
-                return;
-            }
-
-            tbody.innerHTML = keys.map(name => {
-                const item = stockMap[name];
-                const available = item.opening + item.inQty - item.outQty;
-                const safeKey = sanitizeKey(name);
-
-                return `
-                    <tr class="hover:bg-slate-800/40 border-b border-slate-800/60">
-                        <td class="p-2.5 font-medium text-slate-200">${name}</td>
-                        <td class="p-2.5 text-center font-mono text-slate-400">${item.opening}</td>
-                        <td class="p-2.5 text-center font-mono text-emerald-400">+${item.inQty}</td>
-                        <td class="p-2.5 text-center font-mono text-amber-400">-${item.outQty}</td>
-                        <td class="p-2.5 text-right font-mono font-bold ${available >= 0 ? 'text-emerald-400' : 'text-red-400'}">${available}</td>
-                        <td class="p-2.5 text-center no-print">
-                            <button onclick="editOpeningStock('${safeKey}', '${name}', ${item.opening})" class="px-2 py-1 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20 rounded border border-amber-500/30 text-[10px] font-bold">
-                                ✏️ Edit Stock
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function sanitizeKey(str) {
-            return str.replace(/[.#$\[\]]/g, "_");
-        }
-
-        function editOpeningStock(safeKey, pName, currentVal) {
-            const newVal = prompt(`Set Opening / Base Stock for "${pName}":`, currentVal);
-            if (newVal !== null) {
-                const parsed = parseInt(newVal, 10);
-                if (!isNaN(parsed)) {
-                    openingStockRef.child(safeKey).set(parsed, (err) => {
-                        if (!err) alert("Stock updated successfully!");
-                    });
-                } else {
-                    alert("Please enter a valid number!");
-                }
-            }
-        }
-
-        function editInvoice(id) {
-            const inv = invoicesList.find(i => i.id === id);
+        function editRecord(id) {
+            const inv = invoicesList.find(item => item.id === id);
             if (!inv) return;
 
             editingInvoiceId = id;
-            document.getElementById('formHeaderTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-amber-400 mr-2"></i>Edit Invoice Record';
-            document.getElementById('cancelEditBtn').classList.remove('hidden');
+            const radio = document.querySelector(`input[name="entryType"][value="${inv.type}"]`);
+            if (radio) radio.checked = true;
 
-            const radios = document.getElementsByName('entryType');
-            radios.forEach(r => { r.checked = (r.value === inv.entryType); });
-
-            document.getElementById('invoiceNumber').value = inv.invoiceNumber === 'N/A' ? '' : inv.invoiceNumber;
-            document.getElementById('invoiceDate').value = inv.date;
+            document.getElementById('invoiceNumber').value = (inv.number === 'N/A') ? '' : inv.number;
+            document.getElementById('invoiceDate').value = inv.date || new Date().toISOString().slice(0, 10);
 
             const container = document.getElementById('productRowsContainer');
             container.innerHTML = '';
+            const items = (inv.items && Array.isArray(inv.items)) ? inv.items : [{ product: inv.product || '', quantity: inv.quantity || 1 }];
+            items.forEach(i => addProductRow(i.product, i.quantity));
 
-            if (inv.items && Array.isArray(inv.items)) {
-                inv.items.forEach(i => addProductRow(i.product, i.qty));
-            } else if (inv.product) {
-                addProductRow(inv.product, inv.qty || 1);
-            }
-
+            document.getElementById('formHeaderTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-amber-400 mr-2"></i>Edit Invoice Entry`;
+            document.getElementById('cancelEditBtn').classList.remove('hidden');
             switchTab('scan');
         }
 
         function cancelEditing() {
             editingInvoiceId = null;
-            document.getElementById('formHeaderTitle').innerHTML = '<i class="fa-solid fa-pen-to-square text-brand-400 mr-2"></i>Invoice Entry Form';
+            document.getElementById('invoiceForm').reset();
+            document.getElementById('invoiceDate').valueAsDate = new Date();
+            document.getElementById('formHeaderTitle').innerHTML = `<i class="fa-solid fa-pen-to-square text-brand-400 mr-2"></i>Invoice Entry Form`;
             document.getElementById('cancelEditBtn').classList.add('hidden');
-            resetForm();
+            document.getElementById('productRowsContainer').innerHTML = '';
+            addProductRow();
         }
 
-        function deleteInvoice(id) {
-            if (confirm("Are you sure you want to delete this invoice record?")) {
-                invoicesRef.child(id).remove();
+        function updateDashboardStats() {
+            let inboundTotal = 0, outboundTotal = 0;
+            
+            // Initial inventory base calculations
+            initialProductsInventory.forEach(item => {
+                inboundTotal += Number(item.quantity || 0);
+            });
+
+            // Firebase history additions/subtractions
+            invoicesList.forEach(inv => {
+                if (inv.items && Array.isArray(inv.items)) {
+                    inv.items.forEach(item => {
+                        if (inv.type === 'inbound') inboundTotal += Number(item.quantity || 0);
+                        if (inv.type === 'outbound') outboundTotal += Number(item.quantity || 0);
+                    });
+                }
+            });
+
+            document.getElementById('statInboundCount').innerText = inboundTotal;
+            document.getElementById('statOutboundCount').innerText = outboundTotal;
+            document.getElementById('statNetStockCount').innerText = inboundTotal - outboundTotal;
+            document.getElementById('historyBadgeCount').innerText = invoicesList.length;
+        }
+
+        function renderHistoryTable() {
+            const tbody = document.getElementById('historyTableBody');
+            if (!tbody) return;
+            if (invoicesList.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="6" class="text-center py-6 text-slate-500">No records found</td></tr>`;
+                return;
+            }
+            tbody.innerHTML = [...invoicesList].reverse().map(inv => {
+                let itemsSummary = '', totalQty = 0;
+                if (inv.items && Array.isArray(inv.items)) {
+                    itemsSummary = inv.items.map(i => `<div class="py-0.5"><span class="text-white font-medium">${i.product}</span> <span class="text-slate-400 font-mono">(${i.quantity})</span></div>`).join('');
+                    totalQty = inv.items.reduce((sum, i) => sum + Number(i.quantity || 0), 0);
+                }
+                return `
+                    <tr class="border-b border-slate-800">
+                        <td class="p-2.5 font-mono text-slate-400 align-top">${inv.date || '-'}</td>
+                        <td class="p-2.5 align-top">
+                            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${inv.type === 'inbound' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'}">
+                                ${inv.type === 'inbound' ? 'IN' : 'OUT'}
+                            </span>
+                        </td>
+                        <td class="p-2.5 font-mono font-semibold text-white align-top">${inv.number || 'N/A'}</td>
+                        <td class="p-2.5 text-slate-200 align-top">${itemsSummary}</td>
+                        <td class="p-2.5 text-right font-mono font-bold align-top ${inv.type === 'inbound' ? 'text-emerald-400' : 'text-amber-400'}">${totalQty}</td>
+                        <td class="p-2.5 text-center no-print align-top space-x-1">
+                            <button onclick="editRecord('${inv.id}')" class="text-amber-400 hover:text-amber-300 p-1"><i class="fa-solid fa-pen-to-square"></i></button>
+                            <button onclick="deleteRecord('${inv.id}')" class="text-red-400 hover:text-red-300 p-1"><i class="fa-solid fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function deleteRecord(id) {
+            if (confirm("Delete this invoice?")) db.ref('invoices/' + id).remove();
+        }
+
+        function switchTab(tabName) {
+            const scanView = document.getElementById('tabScanView');
+            const historyView = document.getElementById('tabHistoryView');
+            const btnScan = document.getElementById('tabBtnScan');
+            const btnHistory = document.getElementById('tabBtnHistory');
+
+            if (tabName === 'scan') {
+                scanView.classList.remove('hidden');
+                historyView.classList.add('hidden');
+                btnScan.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-brand-500 text-slate-950 transition";
+                btnHistory.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition";
+            } else {
+                scanView.classList.add('hidden');
+                historyView.classList.remove('hidden');
+                btnHistory.className = "px-4 py-2 rounded-lg text-xs font-semibold bg-brand-500 text-slate-950 transition";
+                btnScan.className = "px-4 py-2 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition";
             }
         }
 
         function exportToCSV() {
-            if (invoicesList.length === 0) {
-                alert("No data available to export!");
-                return;
-            }
-
-            let csvContent = "data:text/csv;charset=utf-8,Date,Type,Invoice No,Products Summary,Total Quantity\n";
-            invoicesList.forEach(inv => {
-                let itemsSummary = '';
-                if (inv.items && Array.isArray(inv.items)) {
-                    itemsSummary = inv.items.map(i => `${i.product} (x${i.qty})`).join(' | ');
-                } else if (inv.product) {
-                    itemsSummary = `${inv.product} (x${inv.qty || 1})`;
-                }
-                csvContent += `"${inv.date || ''}","${inv.entryType || ''}","${inv.invoiceNumber || ''}","${itemsSummary}","${inv.totalQty || 0}"\n`;
+            let csvContent = "data:text/csv;charset=utf-8,Date,Type,Invoice Number,Product Name,Quantity\n";
+            invoicesList.forEach(row => {
+                if (row.items) row.items.forEach(item => csvContent += `${row.date},${row.type},${row.number},"${item.product}",${item.quantity}\n`);
             });
-
-            const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `warehouse_report_${new Date().toISOString().slice(0,10)}.csv`);
+            link.setAttribute("href", encodeURI(csvContent));
+            link.setAttribute("download", `warehouse_stock_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
         }
+
+        document.addEventListener("DOMContentLoaded", () => {
+            document.getElementById('invoiceDate').valueAsDate = new Date();
+            addProductRow();
+            rebuildProductCatalog();
+            updateDashboardStats();
+        });
     </script>
 </body>
 </html>
