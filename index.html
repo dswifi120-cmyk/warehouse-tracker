@@ -99,8 +99,7 @@
             main { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
             .bg-cardbg, .bg-sheetbg { background-color: #ffffff !important; color: #000000 !important; }
             .sheet-table th, .sheet-table td { border: 1px solid #64748b !important; color: #000000 !important; }
-            .date-group-row { break-after: avoid; page-break-after: avoid; }
-            .sheet-table tr { break-inside: avoid; page-break-inside: avoid; }
+            #tabStockView { break-inside: avoid; }
         }
     </style>
 </head>
@@ -135,7 +134,7 @@
                         <span>Install App</span>
                     </button>
 
-                    <button onclick="printSelectedDate()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
+                    <button onclick="window.print()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
                         <i class="fa-solid fa-print text-brand-400 mr-1.5"></i>
                         <span class="hidden sm:inline">Print / PDF</span>
                     </button>
@@ -298,15 +297,11 @@
 
         <!-- Tab 2: History List Table -->
         <div id="tabHistoryView" class="hidden bg-cardbg rounded-2xl border border-cardborder p-4 shadow-xl">
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+            <div class="flex items-center justify-between mb-4">
                 <h3 class="font-bold text-slate-100 text-sm flex items-center">
                     <i class="fa-solid fa-list text-brand-400 mr-2"></i>
                     Live Invoice History
                 </h3>
-                <div class="flex items-center gap-2 no-print">
-                    <label for="printDate" class="text-[10px] text-slate-400 font-semibold whitespace-nowrap">Print Date</label>
-                    <input type="date" id="printDate" class="bg-slate-950 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white font-mono focus:outline-none focus:border-brand-500">
-                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left sheet-table text-xs">
@@ -315,15 +310,14 @@
                             <th class="p-2.5">Date</th>
                             <th class="p-2.5">Type</th>
                             <th class="p-2.5">Invoice #</th>
-                            <th class="p-2.5">Product</th>
-                            <th class="p-2.5 text-right">Qty</th>
+                            <th class="p-2.5">Products & Qty</th>
                             <th class="p-2.5 text-right">Total Qty</th>
                             <th class="p-2.5 text-center no-print">Action</th>
                         </tr>
                     </thead>
                     <tbody id="historyTableBody">
                         <tr>
-                            <td colspan="7" class="text-center py-6 text-slate-500">Loading data...</td>
+                            <td colspan="6" class="text-center py-6 text-slate-500">Loading data...</td>
                         </tr>
                     </tbody>
                 </table>
@@ -333,14 +327,26 @@
         <!-- TAB 3: REAL-TIME STOCK VIEW (ADMIN SECURED) -->
         <div id="tabStockView" class="hidden bg-cardbg rounded-2xl border border-cardborder p-4 shadow-xl space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-                <h3 class="font-bold text-slate-100 text-sm flex items-center">
-                    <i class="fa-solid fa-boxes-stacked text-amber-400 mr-2"></i>
-                    Current Live Inventory & Stock Summary
-                </h3>
-                <div class="w-full sm:w-72">
+                <div class="flex items-center gap-3">
+                    <h3 class="font-bold text-slate-100 text-sm flex items-center">
+                        <i class="fa-solid fa-boxes-stacked text-amber-400 mr-2"></i>
+                        Current Live Inventory & Stock Summary
+                    </h3>
+                </div>
+                <div class="flex flex-wrap items-center justify-end gap-2">
+                    <button type="button" onclick="printStock()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
+                        <i class="fa-solid fa-print text-brand-400 mr-1.5"></i>
+                        <span>Print Stock</span>
+                    </button>
+                    <button type="button" onclick="exportStockToCSV()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-300 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
+                        <i class="fa-solid fa-file-excel text-emerald-400 mr-1.5"></i>
+                        <span>Excel / CSV</span>
+                    </button>
+                    <div class="w-full sm:w-72">
                     <div class="relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
                         <input type="text" id="stockSearchInput" onkeyup="renderStockTable()" placeholder="Search product..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400">
+                    </div>
                     </div>
                 </div>
             </div>
@@ -937,7 +943,6 @@
 
         // Set default date to today
         document.getElementById('invoiceDate').valueAsDate = new Date();
-        document.getElementById('printDate').valueAsDate = new Date();
 
         try {
             firebase.initializeApp(firebaseConfig);
@@ -1169,111 +1174,40 @@
             document.getElementById('historyBadgeCount').textContent = invoicesList.length;
         }
 
-        function renderHistoryTable(filterDate = '') {
+        function renderHistoryTable() {
             const tbody = document.getElementById('historyTableBody');
-            const sourceList = invoicesList.slice().reverse();
-            const filteredList = filterDate
-                ? sourceList.filter(inv => (inv.date || '') === filterDate)
-                : sourceList;
-
-            if (filteredList.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" class="text-center py-6 text-slate-500">No invoice records found.</td></tr>';
+            if (invoicesList.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="6" class="text-center py-6 text-slate-500">No invoice records found.</td></tr>';
                 return;
             }
 
-            // Group invoices by date so every day gets one large date-wise section.
-            const groupedByDate = {};
-            filteredList.forEach(inv => {
-                const dateKey = inv.date || '-';
-                if (!groupedByDate[dateKey]) groupedByDate[dateKey] = [];
-                groupedByDate[dateKey].push(inv);
-            });
+            tbody.innerHTML = invoicesList.slice().reverse().map(inv => {
+                const isInbound = inv.entryType === 'inbound';
+                const typeBadge = isInbound 
+                    ? '<span class="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 text-[10px] font-bold">📥 Inbound</span>'
+                    : '<span class="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[10px] font-bold">📤 Outbound</span>';
 
-            tbody.innerHTML = Object.keys(groupedByDate).map(dateKey => {
-                const dayInvoices = groupedByDate[dateKey];
-
-                const dayRows = dayInvoices.map(inv => {
-                    const isInbound = inv.entryType === 'inbound';
-                    const typeBadge = isInbound
-                        ? '<span class="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20 text-[10px] font-bold">📥 Inbound</span>'
-                        : '<span class="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20 text-[10px] font-bold">📤 Outbound</span>';
-
-                    let items = [];
-                    if (inv.items && Array.isArray(inv.items)) {
-                        items = inv.items.filter(i => i && i.product);
-                    } else if (inv.product) {
-                        items = [{ product: inv.product, qty: inv.qty || 1 }];
-                    }
-
-                    if (items.length === 0) {
-                        items = [{ product: '-', qty: 0 }];
-                    }
-
-                    const itemRows = items.map((item, index) => {
-                        const firstCells = index === 0 ? `
-                            <td rowspan="${items.length}" class="p-2.5 font-mono text-slate-300 align-top whitespace-nowrap">${inv.date || '-'}</td>
-                            <td rowspan="${items.length}" class="p-2.5 align-top">${typeBadge}</td>
-                            <td rowspan="${items.length}" class="p-2.5 font-mono text-slate-300 align-top">${inv.invoiceNumber || 'N/A'}</td>
-                        ` : '';
-
-                        const totalCell = index === 0 ? `
-                            <td rowspan="${items.length}" class="p-2.5 text-right font-mono font-bold align-top ${isInbound ? 'text-emerald-400' : 'text-amber-400'}">${inv.totalQty || 0}</td>
-                            <td rowspan="${items.length}" class="p-2.5 text-center no-print align-top">
-                                <button onclick="editInvoice('${inv.id}')" class="text-blue-400 hover:text-blue-300 mr-2"><i class="fa-solid fa-pen"></i></button>
-                                <button onclick="deleteInvoice('${inv.id}')" class="text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i></button>
-                            </td>
-                        ` : '';
-
-                        return `
-                            <tr class="hover:bg-slate-800/40 border-b border-slate-800/60">
-                                ${firstCells}
-                                <td class="p-2.5 text-slate-200">${item.product}</td>
-                                <td class="p-2.5 text-right font-mono font-bold ${isInbound ? 'text-emerald-400' : 'text-amber-400'}">${item.qty || 0}</td>
-                                ${totalCell}
-                            </tr>
-                        `;
-                    }).join('');
-
-                    return itemRows;
-                }).join('');
+                let itemsSummary = '';
+                if (inv.items && Array.isArray(inv.items)) {
+                    itemsSummary = inv.items.map(i => `${i.product} (x${i.qty})`).join(', ');
+                } else if (inv.product) {
+                    itemsSummary = `${inv.product} (x${inv.qty || 1})`;
+                }
 
                 return `
-                    <tr class="date-group-row bg-slate-900/90">
-                        <td colspan="7" class="p-3 text-left font-bold text-brand-400 border-t-2 border-brand-500/40 border-b border-slate-700">
-                            <i class="fa-solid fa-calendar-day mr-2"></i>${dateKey}
+                    <tr class="hover:bg-slate-800/40 border-b border-slate-800/60">
+                        <td class="p-2.5 font-mono text-slate-300">${inv.date || '-'}</td>
+                        <td class="p-2.5">${typeBadge}</td>
+                        <td class="p-2.5 font-mono text-slate-300">${inv.invoiceNumber || 'N/A'}</td>
+                        <td class="p-2.5 text-slate-200">${itemsSummary}</td>
+                        <td class="p-2.5 text-right font-mono font-bold ${isInbound ? 'text-emerald-400' : 'text-amber-400'}">${inv.totalQty}</td>
+                        <td class="p-2.5 text-center no-print">
+                            <button onclick="editInvoice('${inv.id}')" class="text-blue-400 hover:text-blue-300 mr-2"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteInvoice('${inv.id}')" class="text-red-400 hover:text-red-300"><i class="fa-solid fa-trash"></i></button>
                         </td>
                     </tr>
-                    ${dayRows}
                 `;
             }).join('');
-        }
-
-        function printSelectedDate() {
-            const dateInput = document.getElementById('printDate');
-            const selectedDate = dateInput ? dateInput.value : '';
-
-            if (!selectedDate) {
-                alert("Please select a date for printing!");
-                return;
-            }
-
-            const dateInvoices = invoicesList.filter(inv => (inv.date || '') === selectedDate);
-            if (dateInvoices.length === 0) {
-                alert(`No invoice records found for ${selectedDate}.`);
-                return;
-            }
-
-            // Print only the selected day's invoices without changing or deleting stored data.
-            switchTab('history');
-            renderHistoryTable(selectedDate);
-
-            const restoreAfterPrint = () => {
-                renderHistoryTable();
-                window.removeEventListener('afterprint', restoreAfterPrint);
-            };
-
-            window.addEventListener('afterprint', restoreAfterPrint);
-            window.print();
         }
 
         // REAL-TIME STOCK TAB CALCULATION & RENDER
@@ -1391,59 +1325,110 @@
         }
 
         function csvEscape(value) {
-            return `"${String(value ?? '').replace(/"/g, '""')}"`;
+            const text = value === null || value === undefined ? '' : String(value);
+            return `"${text.replace(/"/g, '""')}"`;
         }
 
+        // Invoice History export: one product per row so Excel/CSV stays readable.
         function exportToCSV() {
             if (invoicesList.length === 0) {
                 alert("No data available to export!");
                 return;
             }
 
-            // Keep the existing invoice data untouched, but export each product
-            // as its own Excel/CSV row for a clean row/column structure.
-            let csvRows = [];
-            csvRows.push([
-                'Date',
-                'Type',
-                'Invoice No',
-                'Product',
-                'Quantity',
-                'Invoice Total Quantity'
-            ].map(csvEscape).join(','));
+            let rows = [["Date", "Type", "Invoice No", "Product", "Quantity", "Total Invoice Quantity"]];
 
             invoicesList.forEach(inv => {
-                let items = [];
-
-                if (inv.items && Array.isArray(inv.items)) {
-                    items = inv.items.filter(i => i && i.product);
+                if (inv.items && Array.isArray(inv.items) && inv.items.length > 0) {
+                    inv.items.forEach(i => {
+                        rows.push([inv.date || '', inv.entryType || '', inv.invoiceNumber || '', i.product || '', i.qty || 0, inv.totalQty || 0]);
+                    });
                 } else if (inv.product) {
-                    items = [{ product: inv.product, qty: inv.qty || 1 }];
+                    rows.push([inv.date || '', inv.entryType || '', inv.invoiceNumber || '', inv.product || '', inv.qty || 1, inv.totalQty || 0]);
+                } else {
+                    rows.push([inv.date || '', inv.entryType || '', inv.invoiceNumber || '', '', 0, inv.totalQty || 0]);
                 }
-
-                if (items.length === 0) {
-                    items = [{ product: '', qty: 0 }];
-                }
-
-                items.forEach(item => {
-                    csvRows.push([
-                        inv.date || '',
-                        inv.entryType || '',
-                        inv.invoiceNumber || '',
-                        item.product || '',
-                        item.qty || 0,
-                        inv.totalQty || 0
-                    ].map(csvEscape).join(','));
-                });
             });
 
-            const csvContent = 'data:text/csv;charset=utf-8,' + csvRows.join('\\n');
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `warehouse_report_${new Date().toISOString().slice(0,10)}.csv`);
+            const csvContent = "\uFEFF" + rows.map(row => row.map(csvEscape).join(',')).join('\r\n');
+            downloadCSV(csvContent, `warehouse_invoice_history_${new Date().toISOString().slice(0,10)}.csv`);
+        }
+
+        // Build the exact same stock calculation used by the live Stock table.
+        function getCurrentStockMap() {
+            const stockMap = {};
+
+            fullCatalogSet.forEach(pName => {
+                if (pName) {
+                    stockMap[pName] = { opening: getOpeningQty(pName), inQty: 0, outQty: 0 };
+                }
+            });
+
+            invoicesList.forEach(inv => {
+                const type = inv.entryType;
+                if (inv.items && Array.isArray(inv.items)) {
+                    inv.items.forEach(i => {
+                        const name = i.product;
+                        const qty = parseInt(i.qty, 10) || 0;
+                        if (!name) return;
+                        if (!stockMap[name]) stockMap[name] = { opening: getOpeningQty(name), inQty: 0, outQty: 0 };
+                        if (type === 'inbound') stockMap[name].inQty += qty;
+                        else if (type === 'outbound') stockMap[name].outQty += qty;
+                    });
+                } else if (inv.product) {
+                    const name = inv.product;
+                    const qty = parseInt(inv.qty, 10) || 0;
+                    if (!stockMap[name]) stockMap[name] = { opening: getOpeningQty(name), inQty: 0, outQty: 0 };
+                    if (type === 'inbound') stockMap[name].inQty += qty;
+                    else if (type === 'outbound') stockMap[name].outQty += qty;
+                }
+            });
+
+            return stockMap;
+        }
+
+        function exportStockToCSV() {
+            const stockMap = getCurrentStockMap();
+            const searchFilter = (document.getElementById('stockSearchInput')?.value || '').toLowerCase().trim();
+            const keys = Object.keys(stockMap)
+                .filter(name => name.toLowerCase().includes(searchFilter))
+                .sort();
+
+            if (keys.length === 0) {
+                alert("No stock data available to export!");
+                return;
+            }
+
+            const rows = [["Product Name", "Opening / Adjusted Stock", "Inbound (+)", "Outbound (-)", "Current Available Stock"]];
+            keys.forEach(name => {
+                const item = stockMap[name];
+                const available = item.opening + item.inQty - item.outQty;
+                rows.push([name, item.opening, item.inQty, item.outQty, available]);
+            });
+
+            const csvContent = "\uFEFF" + rows.map(row => row.map(csvEscape).join(',')).join('\r\n');
+            downloadCSV(csvContent, `warehouse_stock_${new Date().toISOString().slice(0,10)}.csv`);
+        }
+
+        function downloadCSV(csvContent, filename) {
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = filename;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
+
+        function printStock() {
+            const stockView = document.getElementById('tabStockView');
+            if (!stockView) return;
+
+            // Make sure the stock tab is the only report view intended for printing.
+            switchTab('stock');
+            window.print();
+        }
+
     </script>
