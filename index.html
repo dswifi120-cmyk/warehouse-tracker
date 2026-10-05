@@ -93,17 +93,23 @@
             -webkit-backdrop-filter: blur(12px);
         }
 
+        #datePrintArea { display: none; }
+
         @media print {
+            body.print-date-only > *:not(#datePrintArea) { display: none !important; }
+            body.print-date-only #datePrintArea { display: block !important; }
             body { background-color: #ffffff !important; color: #000000 !important; }
             header, nav, button, .no-print, #passwordModal { display: none !important; }
             main { max-width: 100% !important; padding: 0 !important; margin: 0 !important; }
             .bg-cardbg, .bg-sheetbg { background-color: #ffffff !important; color: #000000 !important; }
             .sheet-table th, .sheet-table td { border: 1px solid #64748b !important; color: #000000 !important; }
-            #tabStockView { break-inside: avoid; }
         }
     </style>
 </head>
 <body class="text-slate-100 antialiased min-h-screen flex flex-col pb-20 md:pb-6">
+
+    <!-- Temporary print area for selected-date invoice printing -->
+    <div id="datePrintArea" aria-hidden="true"></div>
 
     <!-- Global Dynamic Datalist -->
     <datalist id="productCatalogList"></datalist>
@@ -297,11 +303,17 @@
 
         <!-- Tab 2: History List Table -->
         <div id="tabHistoryView" class="hidden bg-cardbg rounded-2xl border border-cardborder p-4 shadow-xl">
-            <div class="flex items-center justify-between mb-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <h3 class="font-bold text-slate-100 text-sm flex items-center">
                     <i class="fa-solid fa-list text-brand-400 mr-2"></i>
                     Live Invoice History
                 </h3>
+                <div class="flex flex-wrap items-center gap-2 no-print">
+                    <input type="date" id="historyPrintDate" class="bg-slate-900 border border-slate-700 text-slate-200 rounded-lg px-3 py-2 text-xs outline-none focus:border-brand-500">
+                    <button type="button" onclick="printHistoryByDate()" class="px-3 py-2 bg-brand-600 hover:bg-brand-500 text-slate-950 font-bold rounded-lg text-xs flex items-center gap-2">
+                        <i class="fa-solid fa-print"></i> Print Selected Date
+                    </button>
+                </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full text-left sheet-table text-xs">
@@ -327,26 +339,14 @@
         <!-- TAB 3: REAL-TIME STOCK VIEW (ADMIN SECURED) -->
         <div id="tabStockView" class="hidden bg-cardbg rounded-2xl border border-cardborder p-4 shadow-xl space-y-4">
             <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
-                <div class="flex items-center gap-3">
-                    <h3 class="font-bold text-slate-100 text-sm flex items-center">
-                        <i class="fa-solid fa-boxes-stacked text-amber-400 mr-2"></i>
-                        Current Live Inventory & Stock Summary
-                    </h3>
-                </div>
-                <div class="flex flex-wrap items-center justify-end gap-2">
-                    <button type="button" onclick="printStock()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-200 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
-                        <i class="fa-solid fa-print text-brand-400 mr-1.5"></i>
-                        <span>Print Stock</span>
-                    </button>
-                    <button type="button" onclick="exportStockToCSV()" class="inline-flex items-center px-2.5 py-1.5 text-xs font-medium rounded-xl text-slate-300 bg-slate-800 hover:bg-slate-700 transition border border-slate-700">
-                        <i class="fa-solid fa-file-excel text-emerald-400 mr-1.5"></i>
-                        <span>Excel / CSV</span>
-                    </button>
-                    <div class="w-full sm:w-72">
+                <h3 class="font-bold text-slate-100 text-sm flex items-center">
+                    <i class="fa-solid fa-boxes-stacked text-amber-400 mr-2"></i>
+                    Current Live Inventory & Stock Summary
+                </h3>
+                <div class="w-full sm:w-72">
                     <div class="relative">
                         <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
                         <input type="text" id="stockSearchInput" onkeyup="renderStockTable()" placeholder="Search product..." class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-8 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-amber-400">
-                    </div>
                     </div>
                 </div>
             </div>
@@ -1324,111 +1324,116 @@
             }
         }
 
-        function csvEscape(value) {
-            const text = value === null || value === undefined ? '' : String(value);
-            return `"${text.replace(/"/g, '""')}"`;
+        function printHistoryByDate() {
+            const dateInput = document.getElementById('historyPrintDate');
+            const selectedDate = dateInput ? dateInput.value : '';
+
+            if (!selectedDate) {
+                alert('Please select a date first.');
+                return;
+            }
+
+            const selectedInvoices = invoicesList.filter(inv => String(inv.date || '') === selectedDate);
+
+            if (selectedInvoices.length === 0) {
+                alert('No invoice records found for the selected date.');
+                return;
+            }
+
+            const rows = [];
+            selectedInvoices.slice().reverse().forEach(inv => {
+                const typeText = inv.entryType === 'inbound' ? 'Inbound' : 'Outbound';
+                if (inv.items && Array.isArray(inv.items) && inv.items.length > 0) {
+                    inv.items.forEach(item => {
+                        rows.push({
+                            date: inv.date || '',
+                            type: typeText,
+                            invoice: inv.invoiceNumber || 'N/A',
+                            product: item.product || '',
+                            qty: item.qty || 0
+                        });
+                    });
+                } else if (inv.product) {
+                    rows.push({
+                        date: inv.date || '',
+                        type: typeText,
+                        invoice: inv.invoiceNumber || 'N/A',
+                        product: inv.product,
+                        qty: inv.qty || 1
+                    });
+                }
+            });
+
+            const printArea = document.getElementById('datePrintArea');
+            printArea.innerHTML = `
+                <div style="font-family:Arial,sans-serif;color:#000;padding:20px;">
+                    <h2 style="margin:0 0 6px;text-align:center;">Invoice History</h2>
+                    <h3 style="margin:0 0 18px;text-align:center;font-weight:normal;">Date: ${selectedDate}</h3>
+                    <table style="width:100%;border-collapse:collapse;font-size:12px;">
+                        <thead>
+                            <tr>
+                                <th style="border:1px solid #333;padding:7px;text-align:left;">Date</th>
+                                <th style="border:1px solid #333;padding:7px;text-align:left;">Type</th>
+                                <th style="border:1px solid #333;padding:7px;text-align:left;">Invoice #</th>
+                                <th style="border:1px solid #333;padding:7px;text-align:left;">Product</th>
+                                <th style="border:1px solid #333;padding:7px;text-align:right;">Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${rows.map(r => `
+                                <tr>
+                                    <td style="border:1px solid #333;padding:7px;">${escapeHtmlForPrint(r.date)}</td>
+                                    <td style="border:1px solid #333;padding:7px;">${escapeHtmlForPrint(r.type)}</td>
+                                    <td style="border:1px solid #333;padding:7px;">${escapeHtmlForPrint(r.invoice)}</td>
+                                    <td style="border:1px solid #333;padding:7px;">${escapeHtmlForPrint(r.product)}</td>
+                                    <td style="border:1px solid #333;padding:7px;text-align:right;">${escapeHtmlForPrint(r.qty)}</td>
+                                </tr>`).join('')}
+                        </tbody>
+                    </table>
+                    <p style="margin-top:14px;font-size:11px;text-align:right;">Total product rows: ${rows.length}</p>
+                </div>`;
+
+            document.body.classList.add('print-date-only');
+            window.addEventListener('afterprint', function cleanupDatePrint() {
+                document.body.classList.remove('print-date-only');
+                printArea.innerHTML = '';
+                window.removeEventListener('afterprint', cleanupDatePrint);
+            });
+            window.print();
         }
 
-        // Invoice History export: one product per row so Excel/CSV stays readable.
+        function escapeHtmlForPrint(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
         function exportToCSV() {
             if (invoicesList.length === 0) {
                 alert("No data available to export!");
                 return;
             }
 
-            let rows = [["Date", "Type", "Invoice No", "Product", "Quantity", "Total Invoice Quantity"]];
-
+            let csvContent = "data:text/csv;charset=utf-8,Date,Type,Invoice No,Products Summary,Total Quantity\n";
             invoicesList.forEach(inv => {
-                if (inv.items && Array.isArray(inv.items) && inv.items.length > 0) {
-                    inv.items.forEach(i => {
-                        rows.push([inv.date || '', inv.entryType || '', inv.invoiceNumber || '', i.product || '', i.qty || 0, inv.totalQty || 0]);
-                    });
-                } else if (inv.product) {
-                    rows.push([inv.date || '', inv.entryType || '', inv.invoiceNumber || '', inv.product || '', inv.qty || 1, inv.totalQty || 0]);
-                } else {
-                    rows.push([inv.date || '', inv.entryType || '', inv.invoiceNumber || '', '', 0, inv.totalQty || 0]);
-                }
-            });
-
-            const csvContent = "\uFEFF" + rows.map(row => row.map(csvEscape).join(',')).join('\r\n');
-            downloadCSV(csvContent, `warehouse_invoice_history_${new Date().toISOString().slice(0,10)}.csv`);
-        }
-
-        // Build the exact same stock calculation used by the live Stock table.
-        function getCurrentStockMap() {
-            const stockMap = {};
-
-            fullCatalogSet.forEach(pName => {
-                if (pName) {
-                    stockMap[pName] = { opening: getOpeningQty(pName), inQty: 0, outQty: 0 };
-                }
-            });
-
-            invoicesList.forEach(inv => {
-                const type = inv.entryType;
+                let itemsSummary = '';
                 if (inv.items && Array.isArray(inv.items)) {
-                    inv.items.forEach(i => {
-                        const name = i.product;
-                        const qty = parseInt(i.qty, 10) || 0;
-                        if (!name) return;
-                        if (!stockMap[name]) stockMap[name] = { opening: getOpeningQty(name), inQty: 0, outQty: 0 };
-                        if (type === 'inbound') stockMap[name].inQty += qty;
-                        else if (type === 'outbound') stockMap[name].outQty += qty;
-                    });
+                    itemsSummary = inv.items.map(i => `${i.product} (x${i.qty})`).join(' | ');
                 } else if (inv.product) {
-                    const name = inv.product;
-                    const qty = parseInt(inv.qty, 10) || 0;
-                    if (!stockMap[name]) stockMap[name] = { opening: getOpeningQty(name), inQty: 0, outQty: 0 };
-                    if (type === 'inbound') stockMap[name].inQty += qty;
-                    else if (type === 'outbound') stockMap[name].outQty += qty;
+                    itemsSummary = `${inv.product} (x${inv.qty || 1})`;
                 }
+                csvContent += `"${inv.date || ''}","${inv.entryType || ''}","${inv.invoiceNumber || ''}","${itemsSummary}","${inv.totalQty || 0}"\n`;
             });
 
-            return stockMap;
-        }
-
-        function exportStockToCSV() {
-            const stockMap = getCurrentStockMap();
-            const searchFilter = (document.getElementById('stockSearchInput')?.value || '').toLowerCase().trim();
-            const keys = Object.keys(stockMap)
-                .filter(name => name.toLowerCase().includes(searchFilter))
-                .sort();
-
-            if (keys.length === 0) {
-                alert("No stock data available to export!");
-                return;
-            }
-
-            const rows = [["Product Name", "Opening / Adjusted Stock", "Inbound (+)", "Outbound (-)", "Current Available Stock"]];
-            keys.forEach(name => {
-                const item = stockMap[name];
-                const available = item.opening + item.inQty - item.outQty;
-                rows.push([name, item.opening, item.inQty, item.outQty, available]);
-            });
-
-            const csvContent = "\uFEFF" + rows.map(row => row.map(csvEscape).join(',')).join('\r\n');
-            downloadCSV(csvContent, `warehouse_stock_${new Date().toISOString().slice(0,10)}.csv`);
-        }
-
-        function downloadCSV(csvContent, filename) {
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const url = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = filename;
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `warehouse_report_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            URL.revokeObjectURL(url);
         }
-
-        function printStock() {
-            const stockView = document.getElementById('tabStockView');
-            if (!stockView) return;
-
-            // Make sure the stock tab is the only report view intended for printing.
-            switchTab('stock');
-            window.print();
-        }
-
     </script>
